@@ -621,6 +621,9 @@ static s32 SetDisplayModeFromSurface(SVideo* pVideoDriver,  SDisplayMode* pDispl
     return 0;
 }
 
+HRESULT __stdcall SetDisplayModeHack(IDirectDraw7* pThis, DWORD w, DWORD h, DWORD bits);
+
+
 s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 {
     if (!pVideoDriver)
@@ -960,8 +963,12 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
     }
 
     
-    if (pVideoDriver->field_8C_DirectDraw7->SetDisplayMode(
-        pDisplayMode_1->field_8_width, pDisplayMode_1->field_C_height, pDisplayMode_1->field_14_rgb_bit_count, 0, DDSDM_STANDARDVGAMODE)) // TODO: Last 2 args not used by the game!
+    // HACK: Typecast to get to older SetDisplayMode, else stack will be smashed
+    IDirectDraw* pOld = (IDirectDraw*)pVideoDriver->field_8C_DirectDraw7;
+    if (pOld->SetDisplayMode(
+        pDisplayMode_1->field_8_width, 
+        pDisplayMode_1->field_C_height, 
+        pDisplayMode_1->field_14_rgb_bit_count))
     {
         return 1;
     }

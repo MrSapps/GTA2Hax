@@ -1,6 +1,8 @@
 ﻿.vs/
 DmaVideo/Debug/
 Debug/
+DmaVideo/Release/
+Release/
 *.db
 *.suo
 *.opendb

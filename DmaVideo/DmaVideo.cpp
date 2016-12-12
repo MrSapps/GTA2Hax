@@ -483,8 +483,110 @@ void CC Vid_CloseScreen(SVideo* pVideo)
 
 }
 
+static DWORD gCoopResult_dword_100FFE4; // TODO: Not required to be global?
+
 s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
 {
+    const DWORD currentDeviceId = pVideoDriver->field_34_active_device_id;
+    if (currentDeviceId != deviceId)
+    {
+        if (currentDeviceId)
+        {
+            if (pVideoDriver)
+            {
+                if (pVideoDriver->field_40_minus2IfHaveSurface)
+                {
+                    auto pDDraw = pVideoDriver->field_8C_DirectDraw7;
+                    if (pDDraw)
+                    {
+                        if (pVideoDriver->field_134_SurfacePrimary)
+                        {
+                            pDDraw->RestoreDisplayMode();
+                            gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(
+                                pVideoDriver->field_4C0_hwnd, 8); // TODO: Constant
+                            pVideoDriver->field_134_SurfacePrimary->Release();
+                            if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                            {
+                                pVideoDriver->field_138_Surface->Release();
+                            }
+                            pVideoDriver->field_134_SurfacePrimary = 0;
+                            pVideoDriver->field_138_Surface = 0;
+                            pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                        }
+                    }
+                }
+            }
+            if (pVideoDriver->field_120_IDDraw4)
+            {
+                //--gDD4Refs_dword_100FFF4;
+                pVideoDriver->field_120_IDDraw4->Release();
+                pVideoDriver->field_120_IDDraw4 = 0;
+            }
+            if (pVideoDriver->field_8C_DirectDraw7)
+            {
+                //--gDD7Refs_dword_100FFF0;
+                pVideoDriver->field_8C_DirectDraw7->Release();
+                pVideoDriver->field_8C_DirectDraw7 = 0;
+            }
+            pVideoDriver->field_34_active_device_id = 0;
+        }
+        if (deviceId)
+        {
+            auto pDevice = pVideoDriver->field_2C_device_info_head_ptr;
+            if (pVideoDriver && pDevice != 0)
+            {
+                while (pDevice->field_0_id != deviceId)
+                {
+                    pDevice = pDevice->field_10_next_ptr;
+                    if (!pDevice)
+                    {
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                pDevice = 0;
+            }
+
+            auto pDeviceGuid = pDevice->field_14_pDeviceGuid;
+            auto ppDD4 = &pVideoDriver->field_120_IDDraw4;
+            if (pVideoDriver->field_120_IDDraw4)
+            {
+                //--gDD4Refs_dword_100FFF4;
+                (*ppDD4)->Release();
+                *ppDD4 = 0;
+            }
+            auto ppDD7 = &pVideoDriver->field_8C_DirectDraw7;
+            if (pVideoDriver->field_8C_DirectDraw7)
+            {
+                //--gDD7Refs_dword_100FFF0;
+                (*ppDD7)->Release();
+                *ppDD7 = 0;
+            }
+            pVideoDriver->field_88_last_error = DirectDrawCreate(
+                pDeviceGuid,
+                (LPDIRECTDRAW *)&pVideoDriver->field_8C_DirectDraw7,
+                0);
+            //++gDD7Refs_dword_100FFF0;
+            if (pVideoDriver->field_88_last_error)
+            {
+                return 1;
+            }
+
+            pVideoDriver->field_88_last_error = (*ppDD7)->QueryInterface(
+                IID_IDirectDraw4,
+                (LPVOID*)&pVideoDriver->field_120_IDDraw4);
+            //++gDD4Refs_dword_100FFF4;
+            if (pVideoDriver->field_88_last_error)
+            {
+                (*ppDD7)->Release();
+                *ppDD7 = 0;
+                return 1;
+            }
+            pVideoDriver->field_34_active_device_id = deviceId;
+        }
+    }
     return 0;
 }
 

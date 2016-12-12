@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "DmaVideo.hpp"
+#include "logger.hpp"
 
 #pragma comment(lib, "ddraw.lib")
 #pragma comment(lib, "dxguid.lib")
@@ -16,6 +17,8 @@ BOOL WINAPI DirectDrawEnumerateCallBack(
     _In_ LPVOID   lpContext
 )
 {
+    TRACE_ENTRYEXIT;
+
     SVideo* pVideoDriver = reinterpret_cast<SVideo*>(lpContext);
     pVideoDriver->field_20_num_enums++;
 
@@ -66,11 +69,14 @@ BOOL WINAPI DirectDrawEnumerateExCallBack(
 )
 {
     // Pass to other call back
+    TRACE_ENTRYEXIT;
     return DirectDrawEnumerateCallBack(lpGUID, lpDriverDescription, lpDriverName, lpContext);
 }
 
 SDevice* Init_DisplayMode_1001010(SDisplayMode* pDisplayMode, DDSURFACEDESC2* ddsurface, SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     pDisplayMode->field_8_width = ddsurface->dwWidth;
     pDisplayMode->field_C_height = ddsurface->dwHeight;
     pDisplayMode->field_14_rgb_bit_count = ddsurface->ddpfPixelFormat.dwRGBBitCount;
@@ -128,6 +134,8 @@ HRESULT WINAPI EnumDisplayModesCallBack_1001340(
     _In_ LPVOID           lpContext
 )
 {
+    TRACE_ENTRYEXIT;
+
     SVideo* pVideoDriver = reinterpret_cast<SVideo*>(lpContext);
     if (pVideoDriver->field_4_flags & 0x40)
     {
@@ -159,6 +167,8 @@ HRESULT WINAPI EnumDisplayModesCallBack_1001340(
 
 SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
 {
+    TRACE_ENTRYEXIT;
+
     HMODULE hDirectDraw = ::LoadLibraryA("ddraw.dll");
     if (hDirectDraw)
     {
@@ -321,6 +331,8 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
 
 s32 CC Vid_CheckMode(SVideo* pVideoDriver, s32 width, s32 height, s32 rgbBitCount)
 {
+    TRACE_ENTRYEXIT;
+
     if (!pVideoDriver)
     {
         return 0;
@@ -358,6 +370,8 @@ s32 CC Vid_CheckMode(SVideo* pVideoDriver, s32 width, s32 height, s32 rgbBitCoun
 
 SDevice* CC Vid_FindDevice(SVideo* pVideoDriver, s32 deviceId)
 {
+    TRACE_ENTRYEXIT;
+
     SDevice* result = pVideoDriver->field_2C_device_info_head_ptr;
     if (pVideoDriver && result)
     {
@@ -376,6 +390,8 @@ SDevice* CC Vid_FindDevice(SVideo* pVideoDriver, s32 deviceId)
 
 SDisplayMode* CC Vid_FindMode(SVideo* pVideoDriver, s32 modeId)
 {
+    TRACE_ENTRYEXIT;
+
     if (!pVideoDriver || modeId == -2 && pVideoDriver->field_34_active_device_id > 1)
     {
         return 0;
@@ -410,6 +426,8 @@ SDisplayMode* CC Vid_FindMode(SVideo* pVideoDriver, s32 modeId)
 
 s32 CC Vid_FindFirstMode(SVideo* pVideoDriver, s32 rgbBitCountFilter)
 {
+    TRACE_ENTRYEXIT;
+
     if (!pVideoDriver)
     {
         return 0;
@@ -447,6 +465,8 @@ s32 CC Vid_FindFirstMode(SVideo* pVideoDriver, s32 rgbBitCountFilter)
 
 s32 CC Vid_FindNextMode(SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     if (!pVideoDriver)
     {
         return 0;
@@ -482,6 +502,8 @@ static DWORD gCoopResult_dword_100FFE4; // TODO: Not required to be global?
 
 void CC Vid_CloseScreen(SVideo* pVideo)
 {
+    TRACE_ENTRYEXIT;
+
     if (pVideo)
     {
         if (pVideo->field_40_minus2IfHaveSurface)
@@ -508,6 +530,8 @@ void CC Vid_CloseScreen(SVideo* pVideo)
 
 s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
 {
+    TRACE_ENTRYEXIT;
+
     const DWORD currentDeviceId = pVideoDriver->field_34_active_device_id;
     if (currentDeviceId != deviceId)
     {
@@ -613,6 +637,8 @@ s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
 
 static s32 SetDisplayModeFromSurface(SVideo* pVideoDriver,  SDisplayMode* pDisplayMode_1, DWORD modeId)
 {
+    TRACE_ENTRYEXIT;
+
     DDSCAPS2 caps = {};
     caps.dwCaps = 4;
     if (pVideoDriver->field_134_SurfacePrimary->GetAttachedSurface(&caps, &pVideoDriver->field_138_Surface))
@@ -644,6 +670,8 @@ static s32 SetDisplayModeFromSurface(SVideo* pVideoDriver,  SDisplayMode* pDispl
 
 s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 {
+    TRACE_ENTRYEXIT;
+
     if (!pVideoDriver)
     {
         return 1;
@@ -1043,6 +1071,8 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 
 void CC Vid_GrabSurface(SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     if (pVideoDriver && !(pVideoDriver->field_4_flags & 1))
     {
         if (pVideoDriver->field_134_SurfacePrimary->IsLost() == DDERR_SURFACELOST)
@@ -1060,6 +1090,8 @@ void CC Vid_GrabSurface(SVideo* pVideoDriver)
 
 void CC Vid_ReleaseSurface(SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     if (pVideoDriver && pVideoDriver->field_4_flags & 1)
     {
         pVideoDriver->field_138_Surface->Unlock(0);
@@ -1073,6 +1105,8 @@ void CC Vid_ReleaseSurface(SVideo* pVideoDriver)
 
 void CC Vid_FlipBuffers(SVideo* pVideo)
 {
+    TRACE_ENTRYEXIT;
+
     if (pVideo)
     {
         if (pVideo->field_134_SurfacePrimary)
@@ -1143,6 +1177,8 @@ void CC Vid_FlipBuffers(SVideo* pVideo)
 
 void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     if (pVideoDriver)
     {
         if (pVideoDriver->field_40_minus2IfHaveSurface)
@@ -1208,6 +1244,8 @@ void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
 
 s32 CC Vid_EnableWrites(SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && !(pVideoDriver->field_4_flags & 2))
     {
         pVideoDriver->field_4_flags |= 2;
@@ -1228,6 +1266,8 @@ s32 CC Vid_EnableWrites(SVideo* pVideoDriver)
 
 s32 CC Vid_DisableWrites(SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && pVideoDriver->field_4_flags & 2)
     {
         pVideoDriver->field_50_surface_pixels_ptr = 0;
@@ -1239,6 +1279,8 @@ s32 CC Vid_DisableWrites(SVideo* pVideoDriver)
 
 s32 CC Vid_GetSurface(SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     if (!pVideoDriver)
     {
         return 1;
@@ -1281,6 +1323,8 @@ s32 CC Vid_GetSurface(SVideo* pVideoDriver)
 
 s32 CC Vid_FreeSurface(SVideo* pVideoDriver)
 {
+    TRACE_ENTRYEXIT;
+
     s32 ret = 0;
     if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && pVideoDriver->field_4_flags & 2)
     {
@@ -1307,12 +1351,16 @@ s32 CC Vid_FreeSurface(SVideo* pVideoDriver)
 
 s32 CC Vid_ClearScreen(SVideo* pVideoDriver, u8 aR, u8 aG, u8 aB, s32 aLeft, s32 aTop, s32 aRight, s32 aBottom)
 {
+    TRACE_ENTRYEXIT;
+
     // TODO
     return 0;
 }
 
 s32 CC Vid_SetGamma(SVideo* pVideoDriver, f32 a2, f32 a3, f32 a4)
 {
+    TRACE_ENTRYEXIT;
+
     // TODO
     return 0;
 }
@@ -1325,6 +1373,8 @@ s32 CC Vid_WindowProc(SVideo* pVideoDriver, HWND hwnd, DWORD uMsg, WPARAM wParam
 
 s32 CC Vid_InitDLL(HINSTANCE hInstance, s32 a2)
 {
+    TRACE_ENTRYEXIT;
+
     gHinstance = hInstance;
     dword_100FFF8 = a2;
     return 0;
@@ -1338,5 +1388,6 @@ static SVidVersion gVersionInfo =
 
 SVidVersion* CC Vid_GetVersion()
 {
+    TRACE_ENTRYEXIT;
     return &gVersionInfo;
 }

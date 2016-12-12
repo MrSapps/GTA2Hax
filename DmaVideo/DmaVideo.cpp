@@ -480,7 +480,7 @@ s32 CC Vid_FindNextMode(SVideo* pVideoDriver)
 
 void CC Vid_CloseScreen(SVideo* pVideo)
 {
-
+    // TODO
 }
 
 static DWORD gCoopResult_dword_100FFE4; // TODO: Not required to be global?
@@ -959,11 +959,13 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
         return 1;
     }
 
+    
     if (pVideoDriver->field_8C_DirectDraw7->SetDisplayMode(
         pDisplayMode_1->field_8_width, pDisplayMode_1->field_C_height, pDisplayMode_1->field_14_rgb_bit_count, 0, DDSDM_STANDARDVGAMODE)) // TODO: Last 2 args not used by the game!
     {
         return 1;
     }
+    
 
     pVideoDriver->field_4_flags |= 0xA0000000;
     memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(pVideoDriver->field_13C_DDSurfaceDesc7));
@@ -1016,7 +1018,19 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 
 void CC Vid_GrabSurface(SVideo* pVideoDriver)
 {
-
+    if (pVideoDriver && !(pVideoDriver->field_4_flags & 1))
+    {
+        if (pVideoDriver->field_134_SurfacePrimary->IsLost() == DDERR_SURFACELOST)
+        {
+            pVideoDriver->field_134_SurfacePrimary->Restore();
+        }
+        memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(pVideoDriver->field_13C_DDSurfaceDesc7));
+        pVideoDriver->field_13C_DDSurfaceDesc7.dwSize = sizeof(DDSURFACEDESC2);
+        if (!pVideoDriver->field_138_Surface->Lock(0, &pVideoDriver->field_13C_DDSurfaceDesc7, 1, 0))
+        {
+            pVideoDriver->field_4_flags |= 1;
+        }
+    }
 }
 
 void CC Vid_ReleaseSurface(SVideo* pVideoDriver)

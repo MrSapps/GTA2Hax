@@ -1048,12 +1048,77 @@ void CC Vid_ReleaseSurface(SVideo* pVideoDriver)
 
 void CC Vid_FlipBuffers(SVideo* pVideo)
 {
+    if (pVideo)
+    {
+        if (pVideo->field_134_SurfacePrimary)
+        {
+            if (pVideo->field_138_Surface)
+            {
+                if (pVideo->field_134_SurfacePrimary->IsLost() == DDERR_SURFACELOST)
+                {
+                    pVideo->field_4_flags |= 0x10000000u;
+                    if (pVideo->field_134_SurfacePrimary->Restore())
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    pVideo->field_4_flags &= 0xEFFFFFFF;
+                }
 
+                if (pVideo->field_138_Surface->IsLost() == DDERR_SURFACELOST)
+                {
+                    pVideo->field_4_flags |= 0x10000000;
+                    if (pVideo->field_138_Surface->Restore())
+                        return;
+                }
+                else
+                {
+                    pVideo->field_4_flags &= 0xEFFFFFFF;
+                }
+
+                if (pVideo->field_80_active_mode_q == 1)
+                {
+                    if (pVideo->field_4_flags & 2)
+                    {
+                        pVideo->field_134_SurfacePrimary->Flip(0, 9);
+                    }
+                    else
+                    {
+                        pVideo->field_134_SurfacePrimary->Flip(0, 1);
+                    }
+                }
+                else
+                {
+                    RECT r = {};
+                    r.bottom = pVideo->field_4C_rect_bottom;
+                    r.top = 0;
+                    r.left = 0;
+                    r.right = pVideo->field_48_rect_right;
+
+                    RECT clientRect = {};
+                    GetClientRect(pVideo->field_4C0_hwnd, &clientRect);
+                    /* TODO FIX ME
+                    ClientToScreen(pVideo->field_4C0_hwnd, &clientRect.left);
+                    clientRect.right += Point.x - clientRect.left;
+                    clientRect.bottom += Point.y - clientRect.top;
+                    */
+                    pVideo->field_134_SurfacePrimary->Blt(
+                        &clientRect,
+                        pVideo->field_138_Surface,
+                        &r,
+                        0x1000000,
+                        0);
+                }
+            }
+        }
+    }
 }
 
 void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
 {
-
+    // TODO
 }
 
 s32 CC Vid_EnableWrites(SVideo* pVideoDriver)

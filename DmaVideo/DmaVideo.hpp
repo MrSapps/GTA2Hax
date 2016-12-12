@@ -128,7 +128,7 @@ struct SDisplayMode
     DWORD field_2C;
     DWORD field_30;
     DWORD field_34;
-    DWORD field_38_pnext;
+    struct SDisplayMode* field_38_pnext;
     DWORD field_3C;
 };
 static_assert(sizeof(SDisplayMode) == 0x40, "Wrong sized SDisplayMode");

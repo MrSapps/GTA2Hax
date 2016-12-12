@@ -349,7 +349,39 @@ SDisplayMode* CC Vid_FindMode(SVideo* pVideoDriver, s32 modeId)
 
 s32 CC Vid_FindFirstMode(SVideo* pVideoDriver, s32 rgbBitCountFilter)
 {
-    return 0;
+    if (!pVideoDriver)
+    {
+        return 0;
+    }
+
+    SDisplayMode* pMode = pVideoDriver->field_24_head_ptr;
+    pVideoDriver->field_10_found_rgb_bit_count = rgbBitCountFilter;
+    if (!pMode)
+    {
+        pVideoDriver->field_8_found_width = 0;
+        pVideoDriver->field_C_found_height = 0;
+        pVideoDriver->field_10_found_rgb_bit_count = 0;
+        pVideoDriver->field_3C_current_enum_ptr = 0;
+        return 0;
+    }
+    const DWORD deviceId = pVideoDriver->field_34_active_device_id;
+
+    while (pMode->field_4_deviceId != deviceId && deviceId || pMode->field_14_rgb_bit_count != rgbBitCountFilter)
+    {
+        pMode = pMode->field_38_pnext;
+        if (!pMode)
+        {
+            pVideoDriver->field_8_found_width = 0;
+            pVideoDriver->field_C_found_height = 0;
+            pVideoDriver->field_10_found_rgb_bit_count = 0;
+            pVideoDriver->field_3C_current_enum_ptr = 0;
+            return 0;
+        }
+    }
+    pVideoDriver->field_3C_current_enum_ptr = pMode->field_38_pnext;
+    pVideoDriver->field_8_found_width = pMode->field_8_width;
+    pVideoDriver->field_C_found_height = pMode->field_C_height;
+    return pMode->field_0_display_mode_idx;
 }
 
 s32 CC Vid_FindNextMode(SVideo* pVideoDriver)

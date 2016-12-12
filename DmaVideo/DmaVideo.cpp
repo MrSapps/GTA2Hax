@@ -590,9 +590,428 @@ s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
     return 0;
 }
 
+static s32 SetDisplayModeFromSurface(SVideo* pVideoDriver,  SDisplayMode* pDisplayMode_1, DWORD modeId)
+{
+    DDSCAPS2 caps = {};
+    caps.dwCaps = 4;
+    if (pVideoDriver->field_134_SurfacePrimary->GetAttachedSurface(&caps, &pVideoDriver->field_138_Surface))
+    {
+        return 1;
+    }
+
+    DDSURFACEDESC2 ddsurface = {};
+    ddsurface.dwSize = sizeof(LPDDSURFACEDESC2);
+    pVideoDriver->field_138_Surface->GetSurfaceDesc(&ddsurface);
+
+    SDisplayMode pDisplayMode = {};
+    Init_DisplayMode_1001010(&pDisplayMode, &ddsurface, pVideoDriver);
+
+    pVideoDriver->field_38 = pDisplayMode_1->field_14_rgb_bit_count;
+    pVideoDriver->field_40_minus2IfHaveSurface = modeId;
+    pVideoDriver->field_48_rect_right = pDisplayMode_1->field_8_width;
+    pVideoDriver->field_58 = pDisplayMode.field_18;
+    pVideoDriver->field_4C_rect_bottom = pDisplayMode_1->field_C_height;
+    pVideoDriver->field_5C = pDisplayMode.field_1C;
+    pVideoDriver->field_64_r = pDisplayMode.field_24;
+    pVideoDriver->field_60_g = pDisplayMode.field_20;
+    pVideoDriver->field_68_b = pDisplayMode.field_28;
+    pVideoDriver->field_70 = pDisplayMode.field_30;
+    pVideoDriver->field_6C = pDisplayMode.field_2C;
+    pVideoDriver->field_74 = pDisplayMode.field_34;
+    return 0;
+}
+
 s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 {
-    return 0;
+    if (!pVideoDriver)
+    {
+        return 1;
+    }
+
+    const bool bModeIsNotMinus2 = modeId != -2;
+    UpdateWindow(hWnd);
+    pVideoDriver->field_4C0_hwnd = hWnd;
+
+    if (pVideoDriver->field_40_minus2IfHaveSurface)
+    {
+        if (pVideoDriver->field_8C_DirectDraw7)
+        {
+            if (pVideoDriver->field_134_SurfacePrimary)
+            {
+                pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
+                gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
+                pVideoDriver->field_134_SurfacePrimary->Release();
+                if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                {
+                    pVideoDriver->field_138_Surface->Release();
+                }
+                pVideoDriver->field_134_SurfacePrimary = 0;
+                pVideoDriver->field_138_Surface = 0;
+                pVideoDriver->field_40_minus2IfHaveSurface = 0;
+            }
+        }
+    }
+
+    const DWORD activeDeviceId = pVideoDriver->field_34_active_device_id;
+    pVideoDriver->field_80_active_mode_q = bModeIsNotMinus2;
+    if (bModeIsNotMinus2 != 1)
+    {
+        if (!activeDeviceId)
+        {
+            auto pDevice = pVideoDriver->field_2C_device_info_head_ptr;
+            if (pDevice)
+            {
+                while (pDevice->field_0_id != 1)
+                {
+                    pDevice = pDevice->field_10_next_ptr;
+                    if (!pDevice)
+                    {
+                        pDevice = 0;
+                        break;
+                    }
+                }
+            }
+
+            auto ppDD4 = &pVideoDriver->field_120_IDDraw4;
+            if (pVideoDriver->field_120_IDDraw4)
+            {
+                //--gDD4Refs_dword_100FFF4;
+                (*ppDD4)->Release();
+                *ppDD4 = 0;
+            }
+
+            auto ppDD7 = &pVideoDriver->field_8C_DirectDraw7;
+            if (pVideoDriver->field_8C_DirectDraw7)
+            {
+                //--gDD7Refs_dword_100FFF0;
+                (*ppDD7)->Release();
+                *ppDD7 = 0;
+            }
+            pVideoDriver->field_88_last_error = DirectDrawCreate(pDevice->field_14_pDeviceGuid, (LPDIRECTDRAW *)&pVideoDriver->field_8C_DirectDraw7, 0);
+            //++gDD7Refs_dword_100FFF0;
+            if (pVideoDriver->field_88_last_error)
+            {
+                return 1;
+            }
+
+            pVideoDriver->field_88_last_error = (*ppDD7)->QueryInterface(IID_IDirectDraw4, (LPVOID*)&pVideoDriver->field_120_IDDraw4);
+            //++gDD4Refs_dword_100FFF4;
+            if (pVideoDriver->field_88_last_error)
+            {
+                (*ppDD7)->Release();
+                *ppDD7 = 0;
+                return 1;
+            }
+            pVideoDriver->field_34_active_device_id = 1;
+        }
+
+        if (pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(hWnd, 8))
+        {
+            return 1;
+        }
+
+
+        memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(pVideoDriver->field_13C_DDSurfaceDesc7));
+        //v38 = pVideoDriver->field_120_IDDraw4;
+        pVideoDriver->field_13C_DDSurfaceDesc7.dwSize = sizeof(DDSURFACEDESC2);
+        pVideoDriver->field_13C_DDSurfaceDesc7.dwFlags = 1;
+        pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 512;
+
+        if (pVideoDriver->field_120_IDDraw4->CreateSurface(&pVideoDriver->field_13C_DDSurfaceDesc7, &pVideoDriver->field_134_SurfacePrimary, 0))
+        {
+            return 1;
+        }
+
+        if (pVideoDriver->field_120_IDDraw4->CreateClipper(0, &pVideoDriver->field_1B8_clipper, 0))
+        {
+            return 1;
+        }
+
+        if (pVideoDriver->field_1B8_clipper->SetHWnd(0, hWnd))
+        {
+            return 1;
+        }
+
+        if (pVideoDriver->field_134_SurfacePrimary->SetClipper(pVideoDriver->field_1B8_clipper))
+        {
+            return 1;
+        }
+
+        RECT Rect = {};
+        GetClientRect(hWnd, &Rect);
+        const auto rectTop = Rect.top;
+        memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(DDSURFACEDESC2));
+        const auto rectBottom_1 = Rect.bottom;
+        pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth = Rect.right - Rect.left;
+        pVideoDriver->field_13C_DDSurfaceDesc7.dwSize = sizeof(DDSURFACEDESC2);
+        pVideoDriver->field_13C_DDSurfaceDesc7.dwFlags = 7;
+        pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight = rectBottom_1 - rectTop;
+
+        if (pVideoDriver->field_4_flags & 0x80)
+        {
+            pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 0x4000;
+            pVideoDriver->field_4_flags |= 0x20000000;
+        }
+        else
+        {
+            pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 2048;
+            pVideoDriver->field_4_flags &= 0xDFFFFFFF;
+        }
+
+        if (pVideoDriver->field_4_flags & 0x40)
+        {
+            pVideoDriver->field_4_flags |= 0x20000000;
+            pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps &= (0xF7 | 0x60); // TODO: Only change 1st byte here
+        }
+
+        if (!pVideoDriver->field_120_IDDraw4->CreateSurface(&pVideoDriver->field_13C_DDSurfaceDesc7, &pVideoDriver->field_138_Surface, 0))
+        {
+            // TODO: Refactor with SetDisplayModeFromSurface
+            DDSURFACEDESC2 ddsurface = {};
+            ddsurface.dwSize = sizeof(DDSURFACEDESC2);
+            pVideoDriver->field_138_Surface->GetSurfaceDesc(&ddsurface);
+
+            SDisplayMode displayMode = {};
+            displayMode.field_0_display_mode_idx = -2;
+            displayMode.field_3C = 1;
+            Init_DisplayMode_1001010(&displayMode, &ddsurface, pVideoDriver);
+
+            pVideoDriver->field_40_minus2IfHaveSurface = modeId;
+            pVideoDriver->field_48_rect_right = Rect.right - Rect.left;
+            pVideoDriver->field_4C_rect_bottom = Rect.bottom - Rect.top;
+            pVideoDriver->field_58 = displayMode.field_18;
+            pVideoDriver->field_5C = displayMode.field_1C;
+            pVideoDriver->field_60_g = displayMode.field_20;
+            pVideoDriver->field_64_r = displayMode.field_24;
+            pVideoDriver->field_68_b = displayMode.field_28;
+            pVideoDriver->field_6C = displayMode.field_2C;
+            pVideoDriver->field_70 = displayMode.field_30;
+            pVideoDriver->field_74 = displayMode.field_34;
+            pVideoDriver->field_38 = displayMode.field_14_rgb_bit_count;
+            return 0;
+        }
+        return 1;
+    }
+
+    if (activeDeviceId)
+    {
+        if (pVideoDriver->field_40_minus2IfHaveSurface)
+        {
+            if (pVideoDriver->field_8C_DirectDraw7)
+            {
+                if (pVideoDriver->field_134_SurfacePrimary)
+                {
+                    pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
+                    gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
+                    pVideoDriver->field_134_SurfacePrimary->Release();
+                    if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                    {
+                        pVideoDriver->field_138_Surface->Release();
+                    }
+                    pVideoDriver->field_134_SurfacePrimary = 0;
+                    pVideoDriver->field_138_Surface = 0;
+                    pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                }
+            }
+        }
+
+        if (pVideoDriver->field_120_IDDraw4)
+        {
+            //--gDD4Refs_dword_100FFF4;
+            pVideoDriver->field_120_IDDraw4->Release();
+            pVideoDriver->field_120_IDDraw4 = 0;
+        }
+
+        if (pVideoDriver->field_8C_DirectDraw7)
+        {
+            //--gDD7Refs_dword_100FFF0;
+            pVideoDriver->field_8C_DirectDraw7->Release();
+            pVideoDriver->field_8C_DirectDraw7 = 0;
+        }
+        pVideoDriver->field_34_active_device_id = 0;
+    }
+    if (modeId == -2 && pVideoDriver->field_34_active_device_id > 1)
+    {
+        return 1;
+    }
+
+    auto pDisplayMode_1 = pVideoDriver->field_24_head_ptr;
+    if (!pDisplayMode_1)
+    {
+        pVideoDriver->field_10_found_rgb_bit_count = 0;
+        pVideoDriver->field_8_found_width = 0;
+        pVideoDriver->field_C_found_height = 0;
+        return 1;
+    }
+
+    while (pDisplayMode_1->field_4_deviceId != pVideoDriver->field_34_active_device_id && pVideoDriver->field_34_active_device_id
+        || pDisplayMode_1->field_0_display_mode_idx != modeId)
+    {
+        pDisplayMode_1 = pDisplayMode_1->field_38_pnext;
+        if (!pDisplayMode_1)
+        {
+            pVideoDriver->field_10_found_rgb_bit_count = 0;
+            pVideoDriver->field_8_found_width = 0;
+            pVideoDriver->field_C_found_height = 0;
+            return 1;
+        }
+    }
+
+    pVideoDriver->field_10_found_rgb_bit_count = pDisplayMode_1->field_14_rgb_bit_count;
+    pVideoDriver->field_8_found_width = pDisplayMode_1->field_8_width;
+    pVideoDriver->field_C_found_height = pDisplayMode_1->field_C_height;
+
+
+    const auto deviceId = pDisplayMode_1->field_4_deviceId;
+    if (pVideoDriver->field_34_active_device_id != deviceId)
+    {
+        if (pVideoDriver->field_34_active_device_id)
+        {
+            if (pVideoDriver->field_40_minus2IfHaveSurface)
+            {
+                if (pVideoDriver->field_8C_DirectDraw7)
+                {
+                    if (pVideoDriver->field_134_SurfacePrimary)
+                    {
+                        pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
+                        gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
+                        pVideoDriver->field_134_SurfacePrimary->Release();
+                        if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                        {
+                            pVideoDriver->field_138_Surface->Release();
+                        }
+                        pVideoDriver->field_134_SurfacePrimary = 0;
+                        pVideoDriver->field_138_Surface = 0;
+                        pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                    }
+                }
+            }
+            if (pVideoDriver->field_120_IDDraw4)
+            {
+                //--gDD4Refs_dword_100FFF4;
+                pVideoDriver->field_120_IDDraw4->Release();
+                pVideoDriver->field_120_IDDraw4 = 0;
+            }
+            if (pVideoDriver->field_8C_DirectDraw7)
+            {
+                //--gDD7Refs_dword_100FFF0;
+                pVideoDriver->field_8C_DirectDraw7->Release();
+                pVideoDriver->field_8C_DirectDraw7 = 0;
+            }
+            pVideoDriver->field_34_active_device_id = 0;
+        }
+        if (deviceId)
+        {
+            auto pDevice_1 = pVideoDriver->field_2C_device_info_head_ptr;
+            if (pDevice_1)
+            {
+                while (pDevice_1->field_0_id != deviceId)
+                {
+                    pDevice_1 = pDevice_1->field_10_next_ptr;
+                    if (!pDevice_1)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            auto ppDD4_1 = &pVideoDriver->field_120_IDDraw4;
+            if (pVideoDriver->field_120_IDDraw4)
+            {
+                //--gDD4Refs_dword_100FFF4;
+                (*ppDD4_1)->Release();
+                *ppDD4_1 = 0;
+            }
+
+            auto ppDD7_1 = &pVideoDriver->field_8C_DirectDraw7;
+            if (pVideoDriver->field_8C_DirectDraw7)
+            {
+                //--gDD7Refs_dword_100FFF0;
+                (*ppDD7_1)->Release();
+                *ppDD7_1 = 0;
+            }
+
+            pVideoDriver->field_88_last_error = DirectDrawCreate(pDevice_1->field_14_pDeviceGuid,
+                (LPDIRECTDRAW *)&pVideoDriver->field_8C_DirectDraw7, 0);
+
+            //++gDD7Refs_dword_100FFF0;
+            if (pVideoDriver->field_88_last_error)
+            {
+                return 1;
+            }
+
+            pVideoDriver->field_88_last_error = (*ppDD7_1)->QueryInterface(IID_IDirectDraw4, (LPVOID *)&pVideoDriver->field_120_IDDraw4);
+            //++gDD4Refs_dword_100FFF4;
+
+            if (pVideoDriver->field_88_last_error)
+            {
+                (*ppDD7_1)->Release();
+                *ppDD7_1 = 0;
+                return 1;
+            }
+
+            pVideoDriver->field_34_active_device_id = deviceId;
+        }
+    }
+
+    if (pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(hWnd, 81))
+    {
+        return 1;
+    }
+
+    if (pVideoDriver->field_8C_DirectDraw7->SetDisplayMode(
+        pDisplayMode_1->field_8_width, pDisplayMode_1->field_C_height, pDisplayMode_1->field_14_rgb_bit_count, 0, DDSDM_STANDARDVGAMODE)) // TODO: Last 2 args not used by the game!
+    {
+        return 1;
+    }
+
+    pVideoDriver->field_4_flags |= 0xA0000000;
+    memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(pVideoDriver->field_13C_DDSurfaceDesc7));
+    pVideoDriver->field_13C_DDSurfaceDesc7.dwSize = 124;
+    pVideoDriver->field_13C_DDSurfaceDesc7.dwFlags = 33;
+    pVideoDriver->field_13C_DDSurfaceDesc7.dwBackBufferCount = 2;
+    pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 16920;
+
+    if (pVideoDriver->field_4_flags & 0x40)
+    {
+        pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 25112;
+    }
+
+    if (pVideoDriver->field_4_flags & 0x10)
+    {
+        if (!pVideoDriver->field_120_IDDraw4->CreateSurface(&pVideoDriver->field_13C_DDSurfaceDesc7, &pVideoDriver->field_134_SurfacePrimary, 0))
+        {
+            return SetDisplayModeFromSurface(pVideoDriver, pDisplayMode_1, modeId);
+        }
+    }
+
+    pVideoDriver->field_13C_DDSurfaceDesc7.dwBackBufferCount = 1;
+
+    auto flags = pVideoDriver->field_4_flags & 0x3FFFFFFF;
+    flags |= 0x40000000u;
+    pVideoDriver->field_4_flags = flags;
+
+    if (pVideoDriver->field_4_flags & 0x30)
+    {
+        if (!pVideoDriver->field_120_IDDraw4->CreateSurface(&pVideoDriver->field_13C_DDSurfaceDesc7, &pVideoDriver->field_134_SurfacePrimary, 0))
+        {
+            return SetDisplayModeFromSurface(pVideoDriver, pDisplayMode_1, modeId);
+        }
+    }
+
+    pVideoDriver->field_4_flags &= 0x9FFFFFFF;
+    if (pVideoDriver->field_4_flags & 0x80)
+    {
+        return 1;
+    }
+
+    pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps &= 0xFFFFBFFF;
+    if (pVideoDriver->field_120_IDDraw4->CreateSurface(&pVideoDriver->field_13C_DDSurfaceDesc7, &pVideoDriver->field_134_SurfacePrimary, 0))
+    {
+        return 1;
+    }
+    
+    return SetDisplayModeFromSurface(pVideoDriver, pDisplayMode_1, modeId);
 }
 
 void CC Vid_GrabSurface(SVideo* pVideoDriver)

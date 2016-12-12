@@ -82,10 +82,10 @@ struct SVideo
     DWORD field_128;
     DWORD field_12C;
     DWORD field_130;
-    IDirectDrawSurface7* field_134_SurfacePrimary;
-    IDirectDrawSurface7* field_138_Surface;
+    IDirectDrawSurface4* field_134_SurfacePrimary;
+    IDirectDrawSurface4* field_138_Surface;
     DDSURFACEDESC2 field_13C_DDSurfaceDesc7;
-    DWORD field_1B8_clipper;
+    LPDIRECTDRAWCLIPPER field_1B8_clipper;
     DWORD field_1BC;
     DWORD field_1C0;
     DWORD field_1C4;

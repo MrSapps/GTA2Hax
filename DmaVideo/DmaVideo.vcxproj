@@ -93,6 +93,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
+    <PostBuildEvent>
+      <Command>del " "C:\Program Files (x86)\Rockstar Games\GTA2\dmavideo.dll"
+copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -106,6 +111,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
+    <PostBuildEvent>
+      <Command>del " "C:\Program Files (x86)\Rockstar Games\GTA2\dmavideo.dll"
+copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -123,6 +133,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
+    <PostBuildEvent>
+      <Command>del " "C:\Program Files (x86)\Rockstar Games\GTA2\dmavideo.dll"
+copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -140,6 +155,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
+    <PostBuildEvent>
+      <Command>del " "C:\Program Files (x86)\Rockstar Games\GTA2\dmavideo.dll"
+copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DmaVideo.hpp" />

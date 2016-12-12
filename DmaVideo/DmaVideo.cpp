@@ -478,12 +478,33 @@ s32 CC Vid_FindNextMode(SVideo* pVideoDriver)
     return pMode->field_0_display_mode_idx;
 }
 
+static DWORD gCoopResult_dword_100FFE4; // TODO: Not required to be global?
+
 void CC Vid_CloseScreen(SVideo* pVideo)
 {
-    // TODO
+    if (pVideo)
+    {
+        if (pVideo->field_40_minus2IfHaveSurface)
+        {
+            if (pVideo->field_8C_DirectDraw7)
+            {
+                if (pVideo->field_134_SurfacePrimary)
+                {
+                    pVideo->field_8C_DirectDraw7->RestoreDisplayMode();
+                    gCoopResult_dword_100FFE4 = pVideo->field_8C_DirectDraw7->SetCooperativeLevel(pVideo->field_4C0_hwnd, 8);
+                    pVideo->field_134_SurfacePrimary->Release();
+                    if (pVideo->field_40_minus2IfHaveSurface == -2)
+                    {
+                        pVideo->field_138_Surface->Release();
+                    }
+                    pVideo->field_134_SurfacePrimary = 0;
+                    pVideo->field_138_Surface = 0;
+                    pVideo->field_40_minus2IfHaveSurface = 0;
+                }
+            }
+        }
+    }
 }
-
-static DWORD gCoopResult_dword_100FFE4; // TODO: Not required to be global?
 
 s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
 {
@@ -620,9 +641,6 @@ static s32 SetDisplayModeFromSurface(SVideo* pVideoDriver,  SDisplayMode* pDispl
     pVideoDriver->field_74 = pDisplayMode.field_34;
     return 0;
 }
-
-HRESULT __stdcall SetDisplayModeHack(IDirectDraw7* pThis, DWORD w, DWORD h, DWORD bits);
-
 
 s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 {

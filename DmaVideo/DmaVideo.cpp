@@ -1035,7 +1035,15 @@ void CC Vid_GrabSurface(SVideo* pVideoDriver)
 
 void CC Vid_ReleaseSurface(SVideo* pVideoDriver)
 {
-
+    if (pVideoDriver && pVideoDriver->field_4_flags & 1)
+    {
+        pVideoDriver->field_138_Surface->Unlock(0);
+        if (pVideoDriver->field_134_SurfacePrimary->IsLost() == DDERR_SURFACELOST)
+        {
+            pVideoDriver->field_134_SurfacePrimary->Restore();
+        }
+        pVideoDriver->field_4_flags &= 0xFE;
+    }
 }
 
 void CC Vid_FlipBuffers(SVideo* pVideo)

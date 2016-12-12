@@ -1123,7 +1123,22 @@ void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
 
 s32 CC Vid_EnableWrites(SVideo* pVideoDriver)
 {
-    return 0;
+    if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && !(pVideoDriver->field_4_flags & 2))
+    {
+        pVideoDriver->field_4_flags |= 2;
+        if (pVideoDriver->field_4_flags & 1)
+        {
+            pVideoDriver->field_50_surface_pixels_ptr = pVideoDriver->field_13C_DDSurfaceDesc7.lpSurface;
+            pVideoDriver->field_54_surface_pixels_pitch = pVideoDriver->field_13C_DDSurfaceDesc7.lPitch;
+        }
+        else
+        {
+            pVideoDriver->field_50_surface_pixels_ptr = 0;
+            pVideoDriver->field_54_surface_pixels_pitch = 0;
+        }
+        return 0;
+    }
+    return 1;
 }
 
 s32 CC Vid_DisableWrites(SVideo* pVideoDriver)

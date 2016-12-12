@@ -25,7 +25,7 @@ struct SVideo
     DWORD field_44;
     DWORD field_48_rect_right;
     DWORD field_4C_rect_bottom;
-    DWORD field_50_surface_pixels_ptr;
+    LPVOID field_50_surface_pixels_ptr;
     DWORD field_54_surface_pixels_pitch;
     DWORD field_58;
     DWORD field_5C;

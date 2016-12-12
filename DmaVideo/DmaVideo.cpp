@@ -1154,7 +1154,44 @@ s32 CC Vid_DisableWrites(SVideo* pVideoDriver)
 
 s32 CC Vid_GetSurface(SVideo* pVideoDriver)
 {
-    return 0;
+    if (!pVideoDriver)
+    {
+        return 1;
+    }
+
+    if (!(pVideoDriver->field_4_flags & 1))
+    {
+        if (pVideoDriver->field_134_SurfacePrimary->IsLost() == DDERR_SURFACELOST)
+        {
+            pVideoDriver->field_134_SurfacePrimary->Restore();
+        }
+
+        memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(DDSURFACEDESC2));
+        pVideoDriver->field_13C_DDSurfaceDesc7.dwSize = sizeof(DDSURFACEDESC2);
+
+        if (!pVideoDriver->field_138_Surface->Lock(0, &pVideoDriver->field_13C_DDSurfaceDesc7, 1, 0))
+        {
+            pVideoDriver->field_4_flags |= 1;
+        }
+    }
+
+    if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && !(pVideoDriver->field_4_flags & 2))
+    {
+        pVideoDriver->field_4_flags |= 2;
+        if (pVideoDriver->field_4_flags & 1)
+        {
+            pVideoDriver->field_54_surface_pixels_pitch = pVideoDriver->field_13C_DDSurfaceDesc7.lPitch;
+            pVideoDriver->field_50_surface_pixels_ptr = pVideoDriver->field_13C_DDSurfaceDesc7.lpSurface;
+        }
+        else
+        {
+            pVideoDriver->field_50_surface_pixels_ptr = 0;
+            pVideoDriver->field_54_surface_pixels_pitch = 0;
+        }
+        return 0;
+    }
+
+    return 1;
 }
 
 s32 CC Vid_FreeSurface(SVideo* pVideoDriver)

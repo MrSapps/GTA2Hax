@@ -1222,11 +1222,13 @@ s32 CC Vid_FreeSurface(SVideo* pVideoDriver)
 
 s32 CC Vid_ClearScreen(SVideo* pVideoDriver, u8 aR, u8 aG, u8 aB, s32 aLeft, s32 aTop, s32 aRight, s32 aBottom)
 {
+    // TODO
     return 0;
 }
 
 s32 CC Vid_SetGamma(SVideo* pVideoDriver, f32 a2, f32 a3, f32 a4)
 {
+    // TODO
     return 0;
 }
 
@@ -1245,7 +1247,7 @@ s32 CC Vid_InitDLL(HINSTANCE hInstance, s32 a2)
 
 static SVidVersion gVersionInfo =
 {
-    0x3FE7AE14,
+    0x3FE7AE14, // TODO: Reverse
     "Reimplementation of DMA Video (Direct Draw implementation). Version 1.8.1"
 };
 

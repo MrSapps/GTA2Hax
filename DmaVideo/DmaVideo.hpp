@@ -20,7 +20,7 @@ struct SVideo
     struct SDevice* field_30_device_info_last;
     DWORD field_34_active_device_id;
     DWORD field_38;
-    void* field_3C_current_enum_ptr;
+    struct SDisplayMode* field_3C_current_enum_ptr;
     DWORD field_40_minus2IfHaveSurface;
     DWORD field_44;
     DWORD field_48_rect_right;

@@ -321,7 +321,39 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
 
 s32 CC Vid_CheckMode(SVideo* pVideoDriver, s32 width, s32 height, s32 rgbBitCount)
 {
-    return 0;
+    if (!pVideoDriver)
+    {
+        return 0;
+    }
+
+    SDisplayMode* pDisplayMode = pVideoDriver->field_24_head_ptr;
+    if (!pDisplayMode)
+    {
+        pVideoDriver->field_10_found_rgb_bit_count = 0;
+        pVideoDriver->field_8_found_width = 0;
+        pVideoDriver->field_C_found_height = 0;
+        return 0;
+    }
+
+    const DWORD deviceId = pVideoDriver->field_34_active_device_id;
+    while (pDisplayMode->field_4_deviceId != deviceId && deviceId
+        || pDisplayMode->field_8_width != width
+        || pDisplayMode->field_C_height != height
+        || pDisplayMode->field_14_rgb_bit_count != rgbBitCount)
+    {
+        pDisplayMode = pDisplayMode->field_38_pnext;
+        if (!pDisplayMode)
+        {
+            pVideoDriver->field_10_found_rgb_bit_count = 0;
+            pVideoDriver->field_8_found_width = 0;
+            pVideoDriver->field_C_found_height = 0;
+            return 0;
+        }
+    }
+    pVideoDriver->field_10_found_rgb_bit_count = pDisplayMode->field_14_rgb_bit_count;
+    pVideoDriver->field_8_found_width = pDisplayMode->field_8_width;
+    pVideoDriver->field_C_found_height = pDisplayMode->field_C_height;
+    return pDisplayMode->field_0_display_mode_idx;
 }
 
 SDevice* CC Vid_FindDevice(SVideo* pVideoDriver, s32 deviceId)

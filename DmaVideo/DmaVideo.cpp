@@ -106,7 +106,13 @@ s32 CC Vid_InitDLL(HINSTANCE hInstance, s32 a2)
     return 0;
 }
 
+static SVidVersion gVersionInfo =
+{
+    0x3FE7AE14,
+    "Reimplementation of DMA Video (Direct Draw implementation). Version 1.8.1"
+};
+
 SVidVersion* CC Vid_GetVersion()
 {
-    return nullptr;
+    return &gVersionInfo;
 }

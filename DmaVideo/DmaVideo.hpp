@@ -19,7 +19,8 @@ struct SDisplayMode
 
 struct SVidVersion
 {
-
+    DWORD mVersion;
+    char mVersionString[255];
 };
 
 using u16 = unsigned short int;

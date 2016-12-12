@@ -1196,7 +1196,28 @@ s32 CC Vid_GetSurface(SVideo* pVideoDriver)
 
 s32 CC Vid_FreeSurface(SVideo* pVideoDriver)
 {
-    return 0;
+    s32 ret = 0;
+    if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && pVideoDriver->field_4_flags & 2)
+    {
+        pVideoDriver->field_50_surface_pixels_ptr = 0;
+        pVideoDriver->field_4_flags &= 0xFD;
+        ret = 0;
+    }
+    else
+    {
+        ret = 1;
+    }
+
+    if (pVideoDriver && pVideoDriver->field_4_flags & 1)
+    {
+        pVideoDriver->field_138_Surface->Unlock(0);
+        if (pVideoDriver->field_134_SurfacePrimary->IsLost() == DDERR_SURFACELOST)
+        {
+            pVideoDriver->field_134_SurfacePrimary->Restore();
+        }
+        pVideoDriver->field_4_flags &= 0xFE;
+    }
+    return ret;
 }
 
 s32 CC Vid_ClearScreen(SVideo* pVideoDriver, u8 aR, u8 aG, u8 aB, s32 aLeft, s32 aTop, s32 aRight, s32 aBottom)

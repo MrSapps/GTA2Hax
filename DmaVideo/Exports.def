@@ -1,0 +1,24 @@
+LIBRARY DMAVIDEO
+EXPORTS
+   Vid_Init_SYS
+   Vid_CheckMode
+   Vid_FindDevice
+   Vid_FindMode
+   Vid_FindFirstMode
+   Vid_FindNextMode
+   Vid_CloseScreen
+   Vid_SetDevice
+   Vid_SetMode
+   Vid_GrabSurface
+   Vid_ReleaseSurface
+   Vid_FlipBuffers
+   Vid_ShutDown_SYS
+   Vid_EnableWrites
+   Vid_DisableWrites
+   Vid_GetSurface
+   Vid_FreeSurface
+   Vid_ClearScreen
+   Vid_SetGamma
+   Vid_WindowProc
+   Vid_InitDLL
+   Vid_GetVersion

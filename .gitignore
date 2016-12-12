@@ -1,4 +1,7 @@
-﻿*.obj
-*.pch
-*.pdb
-*.exp
+﻿.vs/
+DmaVideo/Debug/
+Debug/
+*.db
+*.suo
+*.opendb
+ipch/

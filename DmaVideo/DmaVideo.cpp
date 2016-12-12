@@ -1143,7 +1143,67 @@ void CC Vid_FlipBuffers(SVideo* pVideo)
 
 void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
 {
-    // TODO
+    if (pVideoDriver)
+    {
+        if (pVideoDriver->field_40_minus2IfHaveSurface)
+        {
+            if (pVideoDriver->field_8C_DirectDraw7)
+            {
+                if (pVideoDriver->field_134_SurfacePrimary)
+                {
+                    pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
+                    gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
+                    pVideoDriver->field_134_SurfacePrimary->Release();
+                    if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                    {
+                        pVideoDriver->field_138_Surface->Release();
+                    }
+                    pVideoDriver->field_134_SurfacePrimary = 0;
+                    pVideoDriver->field_138_Surface = 0;
+                    pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                }
+            }
+        }
+
+        if (pVideoDriver->field_120_IDDraw4)
+        {
+            //--gDD4Refs_dword_100FFF4;
+            pVideoDriver->field_120_IDDraw4->Release();
+            pVideoDriver->field_120_IDDraw4 = 0;
+        }
+
+        if (pVideoDriver->field_8C_DirectDraw7)
+        {
+            //--gDD7Refs_dword_100FFF0;
+            pVideoDriver->field_8C_DirectDraw7->Release();
+            pVideoDriver->field_8C_DirectDraw7 = 0;
+        }
+        
+        // Free display modes
+        auto pCurrent = pVideoDriver->field_24_head_ptr;
+        if (pCurrent)
+        {
+            do
+            {
+                auto tmp = pCurrent->field_38_pnext;
+                free(pCurrent);
+                pCurrent = tmp;
+            } while (pCurrent);
+        }
+        
+        // Free devices
+        auto pCurrent2 = pVideoDriver->field_2C_device_info_head_ptr;
+        if (pCurrent2)
+        {
+            do
+            {
+                auto tmp = pCurrent2->field_10_next_ptr;
+                free(pCurrent2);
+                pCurrent2 = tmp;
+            } while (pCurrent2);
+        }
+        free(pVideoDriver);
+    }
 }
 
 s32 CC Vid_EnableWrites(SVideo* pVideoDriver)

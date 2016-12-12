@@ -1143,7 +1143,13 @@ s32 CC Vid_EnableWrites(SVideo* pVideoDriver)
 
 s32 CC Vid_DisableWrites(SVideo* pVideoDriver)
 {
-    return 0;
+    if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && pVideoDriver->field_4_flags & 2)
+    {
+        pVideoDriver->field_50_surface_pixels_ptr = 0;
+        pVideoDriver->field_4_flags &= 0xFD;
+        return 0;
+    }
+    return 1;
 }
 
 s32 CC Vid_GetSurface(SVideo* pVideoDriver)
@@ -1168,6 +1174,7 @@ s32 CC Vid_SetGamma(SVideo* pVideoDriver, f32 a2, f32 a3, f32 a4)
 
 s32 CC Vid_WindowProc(SVideo* pVideoDriver, HWND hwnd, DWORD uMsg, WPARAM wParam, LPARAM lParam)
 {
+    // Nothing to do
     return 0;
 }
 

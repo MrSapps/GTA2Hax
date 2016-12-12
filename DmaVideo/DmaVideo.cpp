@@ -344,7 +344,36 @@ SDevice* CC Vid_FindDevice(SVideo* pVideoDriver, s32 deviceId)
 
 SDisplayMode* CC Vid_FindMode(SVideo* pVideoDriver, s32 modeId)
 {
-    return 0;
+    if (!pVideoDriver || modeId == -2 && pVideoDriver->field_34_active_device_id > 1)
+    {
+        return 0;
+    }
+
+    SDisplayMode* result = pVideoDriver->field_24_head_ptr;
+    if (!result)
+    {
+        pVideoDriver->field_10_found_rgb_bit_count = 0;
+        pVideoDriver->field_8_found_width = 0;
+        pVideoDriver->field_C_found_height = 0;
+        return 0;
+    }
+
+    const DWORD deviceId = pVideoDriver->field_34_active_device_id;
+    while (result->field_4_deviceId != deviceId && deviceId || result->field_0_display_mode_idx != modeId)
+    {
+        result = result->field_38_pnext;
+        if (!result)
+        {
+            pVideoDriver->field_10_found_rgb_bit_count = 0;
+            pVideoDriver->field_8_found_width = 0;
+            pVideoDriver->field_C_found_height = 0;
+            return 0;
+        }
+    }
+    pVideoDriver->field_10_found_rgb_bit_count = result->field_14_rgb_bit_count;
+    pVideoDriver->field_8_found_width = result->field_8_width;
+    pVideoDriver->field_C_found_height = result->field_C_height;
+    return result;
 }
 
 s32 CC Vid_FindFirstMode(SVideo* pVideoDriver, s32 rgbBitCountFilter)

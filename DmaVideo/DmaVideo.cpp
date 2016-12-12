@@ -326,6 +326,19 @@ s32 CC Vid_CheckMode(SVideo* pVideoDriver, s32 width, s32 height, s32 rgbBitCoun
 
 SDevice* CC Vid_FindDevice(SVideo* pVideoDriver, s32 deviceId)
 {
+    SDevice* result = pVideoDriver->field_2C_device_info_head_ptr;
+    if (pVideoDriver && result)
+    {
+        while (result->field_0_id != deviceId)
+        {
+            result = result->field_10_next_ptr;
+            if (!result)
+            {
+                return nullptr;
+            }
+        }
+        return result;
+    }
     return nullptr;
 }
 

@@ -21,7 +21,7 @@ struct SVideo
     DWORD field_34_active_device_id;
     DWORD field_38;
     struct SDisplayMode* field_3C_current_enum_ptr;
-    DWORD field_40_minus2IfHaveSurface;
+    DWORD field_40_full_screen;
     DWORD field_44;
     DWORD field_48_rect_right;
     DWORD field_4C_rect_bottom;

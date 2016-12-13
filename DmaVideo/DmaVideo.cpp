@@ -506,7 +506,7 @@ void CC Vid_CloseScreen(SVideo* pVideo)
 
     if (pVideo)
     {
-        if (pVideo->field_40_minus2IfHaveSurface)
+        if (pVideo->field_40_full_screen)
         {
             if (pVideo->field_8C_DirectDraw7)
             {
@@ -515,13 +515,13 @@ void CC Vid_CloseScreen(SVideo* pVideo)
                     pVideo->field_8C_DirectDraw7->RestoreDisplayMode();
                     gCoopResult_dword_100FFE4 = pVideo->field_8C_DirectDraw7->SetCooperativeLevel(pVideo->field_4C0_hwnd, 8);
                     pVideo->field_134_SurfacePrimary->Release();
-                    if (pVideo->field_40_minus2IfHaveSurface == -2)
+                    if (pVideo->field_40_full_screen == -2)
                     {
                         pVideo->field_138_Surface->Release();
                     }
                     pVideo->field_134_SurfacePrimary = 0;
                     pVideo->field_138_Surface = 0;
-                    pVideo->field_40_minus2IfHaveSurface = 0;
+                    pVideo->field_40_full_screen = 0;
                 }
             }
         }
@@ -539,7 +539,7 @@ s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
         {
             if (pVideoDriver)
             {
-                if (pVideoDriver->field_40_minus2IfHaveSurface)
+                if (pVideoDriver->field_40_full_screen)
                 {
                     auto pDDraw = pVideoDriver->field_8C_DirectDraw7;
                     if (pDDraw)
@@ -550,13 +550,13 @@ s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
                             gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(
                                 pVideoDriver->field_4C0_hwnd, 8); // TODO: Constant
                             pVideoDriver->field_134_SurfacePrimary->Release();
-                            if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                            if (pVideoDriver->field_40_full_screen == -2)
                             {
                                 pVideoDriver->field_138_Surface->Release();
                             }
                             pVideoDriver->field_134_SurfacePrimary = 0;
                             pVideoDriver->field_138_Surface = 0;
-                            pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                            pVideoDriver->field_40_full_screen = 0;
                         }
                     }
                 }
@@ -654,7 +654,7 @@ static s32 SetDisplayModeFromSurface(SVideo* pVideoDriver,  SDisplayMode* pDispl
     Init_DisplayMode_1001010(&pDisplayMode, &ddsurface, pVideoDriver);
 
     pVideoDriver->field_38 = pDisplayMode_1->field_14_rgb_bit_count;
-    pVideoDriver->field_40_minus2IfHaveSurface = modeId;
+    pVideoDriver->field_40_full_screen = modeId;
     pVideoDriver->field_48_rect_right = pDisplayMode_1->field_8_width;
     pVideoDriver->field_58 = pDisplayMode.field_18;
     pVideoDriver->field_4C_rect_bottom = pDisplayMode_1->field_C_height;
@@ -677,11 +677,11 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
         return 1;
     }
 
-    const bool bModeIsNotMinus2 = modeId != -2;
+    const bool bNotFullScreen = modeId != -2;
     UpdateWindow(hWnd);
     pVideoDriver->field_4C0_hwnd = hWnd;
 
-    if (pVideoDriver->field_40_minus2IfHaveSurface)
+    if (pVideoDriver->field_40_full_screen)
     {
         if (pVideoDriver->field_8C_DirectDraw7)
         {
@@ -690,20 +690,20 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                 pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
                 gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
                 pVideoDriver->field_134_SurfacePrimary->Release();
-                if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                if (pVideoDriver->field_40_full_screen == -2)
                 {
                     pVideoDriver->field_138_Surface->Release();
                 }
                 pVideoDriver->field_134_SurfacePrimary = 0;
                 pVideoDriver->field_138_Surface = 0;
-                pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                pVideoDriver->field_40_full_screen = 0;
             }
         }
     }
 
     const DWORD activeDeviceId = pVideoDriver->field_34_active_device_id;
-    pVideoDriver->field_80_active_mode_q = bModeIsNotMinus2;
-    if (bModeIsNotMinus2 != 1)
+    pVideoDriver->field_80_active_mode_q = bNotFullScreen;
+    if (bNotFullScreen != 1)
     {
         if (!activeDeviceId)
         {
@@ -825,7 +825,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
             displayMode.field_3C = 1;
             Init_DisplayMode_1001010(&displayMode, &ddsurface, pVideoDriver);
 
-            pVideoDriver->field_40_minus2IfHaveSurface = modeId;
+            pVideoDriver->field_40_full_screen = modeId;
             pVideoDriver->field_48_rect_right = Rect.right - Rect.left;
             pVideoDriver->field_4C_rect_bottom = Rect.bottom - Rect.top;
             pVideoDriver->field_58 = displayMode.field_18;
@@ -844,7 +844,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 
     if (activeDeviceId)
     {
-        if (pVideoDriver->field_40_minus2IfHaveSurface)
+        if (pVideoDriver->field_40_full_screen)
         {
             if (pVideoDriver->field_8C_DirectDraw7)
             {
@@ -853,13 +853,13 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                     pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
                     gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
                     pVideoDriver->field_134_SurfacePrimary->Release();
-                    if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                    if (pVideoDriver->field_40_full_screen == -2)
                     {
                         pVideoDriver->field_138_Surface->Release();
                     }
                     pVideoDriver->field_134_SurfacePrimary = 0;
                     pVideoDriver->field_138_Surface = 0;
-                    pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                    pVideoDriver->field_40_full_screen = 0;
                 }
             }
         }
@@ -916,7 +916,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
     {
         if (pVideoDriver->field_34_active_device_id)
         {
-            if (pVideoDriver->field_40_minus2IfHaveSurface)
+            if (pVideoDriver->field_40_full_screen)
             {
                 if (pVideoDriver->field_8C_DirectDraw7)
                 {
@@ -925,13 +925,13 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                         pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
                         gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
                         pVideoDriver->field_134_SurfacePrimary->Release();
-                        if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                        if (pVideoDriver->field_40_full_screen == -2)
                         {
                             pVideoDriver->field_138_Surface->Release();
                         }
                         pVideoDriver->field_134_SurfacePrimary = 0;
                         pVideoDriver->field_138_Surface = 0;
-                        pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                        pVideoDriver->field_40_full_screen = 0;
                     }
                 }
             }
@@ -1008,7 +1008,6 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
         return 1;
     }
 
-    
     // HACK: Typecast to get to older SetDisplayMode, else stack will be smashed
     IDirectDraw* pOld = (IDirectDraw*)pVideoDriver->field_8C_DirectDraw7;
     if (pOld->SetDisplayMode(
@@ -1027,12 +1026,12 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
     pVideoDriver->field_13C_DDSurfaceDesc7.dwBackBufferCount = 2;
     pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 16920;
 
-    if (pVideoDriver->field_4_flags & 0x40)
+    if (pVideoDriver->field_4_flags & 0x40) // 0x40 = hardware rendering enabled
     {
         pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 25112;
     }
 
-    if (pVideoDriver->field_4_flags & 0x10)
+    if (pVideoDriver->field_4_flags & 0x10) // 0x10 == Tripple buffering
     {
         if (!pVideoDriver->field_120_IDDraw4->CreateSurface(&pVideoDriver->field_13C_DDSurfaceDesc7, &pVideoDriver->field_134_SurfacePrimary, 0))
         {
@@ -1181,7 +1180,7 @@ void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
 
     if (pVideoDriver)
     {
-        if (pVideoDriver->field_40_minus2IfHaveSurface)
+        if (pVideoDriver->field_40_full_screen)
         {
             if (pVideoDriver->field_8C_DirectDraw7)
             {
@@ -1190,13 +1189,13 @@ void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
                     pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
                     gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
                     pVideoDriver->field_134_SurfacePrimary->Release();
-                    if (pVideoDriver->field_40_minus2IfHaveSurface == -2)
+                    if (pVideoDriver->field_40_full_screen == -2) // -2 == windowed mode ?
                     {
                         pVideoDriver->field_138_Surface->Release();
                     }
                     pVideoDriver->field_134_SurfacePrimary = 0;
                     pVideoDriver->field_138_Surface = 0;
-                    pVideoDriver->field_40_minus2IfHaveSurface = 0;
+                    pVideoDriver->field_40_full_screen = 0;
                 }
             }
         }

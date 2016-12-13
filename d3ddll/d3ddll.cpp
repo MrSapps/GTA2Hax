@@ -17,6 +17,11 @@ void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5)
 
 }
 
+int CC MakeScreenTable(int* result, int a2, unsigned int a3, int a4)
+{
+    return 0;
+}
+
 int CC gbh_AddLight(int a1)
 {
     return 0;

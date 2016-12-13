@@ -3,6 +3,7 @@ EXPORTS
    ConvertColourBank
    DrawLine
    SetShadeTableA
+   MakeScreenTable
    gbh_AddLight
    gbh_AssignPalette
    gbh_BeginLevel
@@ -23,6 +24,7 @@ EXPORTS
    gbh_EndScene
    gbh_FreeImageTable
    gbh_FreePalette
+   gbh_FreeTexture
    gbh_GetGlobals
    gbh_GetUsedCache
    gbh_Init

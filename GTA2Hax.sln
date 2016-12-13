@@ -4,6 +4,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DmaVideo", "DmaVideo\DmaVideo.vcxproj", "{2D24947F-6528-47FC-8365-39D7344A7B7D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D} = {50D44D53-75F6-442C-836D-96BA1DB3E65D}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "d3ddll", "d3ddll\d3ddll.vcxproj", "{50D44D53-75F6-442C-836D-96BA1DB3E65D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +26,14 @@ Global
 		{2D24947F-6528-47FC-8365-39D7344A7B7D}.Release|x64.Build.0 = Release|x64
 		{2D24947F-6528-47FC-8365-39D7344A7B7D}.Release|x86.ActiveCfg = Release|Win32
 		{2D24947F-6528-47FC-8365-39D7344A7B7D}.Release|x86.Build.0 = Release|Win32
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D}.Debug|x64.ActiveCfg = Debug|x64
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D}.Debug|x64.Build.0 = Debug|x64
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D}.Debug|x86.ActiveCfg = Debug|Win32
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D}.Debug|x86.Build.0 = Debug|Win32
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D}.Release|x64.ActiveCfg = Release|x64
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D}.Release|x64.Build.0 = Release|x64
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D}.Release|x86.ActiveCfg = Release|Win32
+		{50D44D53-75F6-442C-836D-96BA1DB3E65D}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

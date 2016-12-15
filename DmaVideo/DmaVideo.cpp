@@ -513,7 +513,7 @@ void CC Vid_CloseScreen(SVideo* pVideo)
                 if (pVideo->field_134_SurfacePrimary)
                 {
                     pVideo->field_8C_DirectDraw7->RestoreDisplayMode();
-                    gCoopResult_dword_100FFE4 = pVideo->field_8C_DirectDraw7->SetCooperativeLevel(pVideo->field_4C0_hwnd, 8);
+                    gCoopResult_dword_100FFE4 = pVideo->field_8C_DirectDraw7->SetCooperativeLevel(pVideo->field_4C0_hwnd, DDSCL_NORMAL);
                     pVideo->field_134_SurfacePrimary->Release();
                     if (pVideo->field_40_full_screen == -2)
                     {
@@ -548,7 +548,7 @@ s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
                         {
                             pDDraw->RestoreDisplayMode();
                             gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(
-                                pVideoDriver->field_4C0_hwnd, 8); // TODO: Constant
+                                pVideoDriver->field_4C0_hwnd, DDSCL_NORMAL);
                             pVideoDriver->field_134_SurfacePrimary->Release();
                             if (pVideoDriver->field_40_full_screen == -2)
                             {
@@ -688,7 +688,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
             if (pVideoDriver->field_134_SurfacePrimary)
             {
                 pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
-                gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
+                gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, DDSCL_NORMAL);
                 pVideoDriver->field_134_SurfacePrimary->Release();
                 if (pVideoDriver->field_40_full_screen == -2)
                 {
@@ -754,7 +754,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
             pVideoDriver->field_34_active_device_id = 1;
         }
 
-        if (pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(hWnd, 8))
+        if (pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(hWnd, DDSCL_NORMAL))
         {
             return 1;
         }
@@ -851,7 +851,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                 if (pVideoDriver->field_134_SurfacePrimary)
                 {
                     pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
-                    gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
+                    gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, DDSCL_NORMAL);
                     pVideoDriver->field_134_SurfacePrimary->Release();
                     if (pVideoDriver->field_40_full_screen == -2)
                     {
@@ -923,7 +923,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                     if (pVideoDriver->field_134_SurfacePrimary)
                     {
                         pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
-                        gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
+                        gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, DDSCL_NORMAL);
                         pVideoDriver->field_134_SurfacePrimary->Release();
                         if (pVideoDriver->field_40_full_screen == -2)
                         {
@@ -1003,7 +1003,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
         }
     }
 
-    if (pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(hWnd, 81))
+    if (pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(hWnd, DDSCL_SETFOCUSWINDOW | DDSCL_FULLSCREEN))
     {
         return 1;
     }
@@ -1187,7 +1187,7 @@ void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
                 if (pVideoDriver->field_134_SurfacePrimary)
                 {
                     pVideoDriver->field_8C_DirectDraw7->RestoreDisplayMode();
-                    gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, 8);
+                    gCoopResult_dword_100FFE4 = pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(pVideoDriver->field_4C0_hwnd, DDSCL_NORMAL);
                     pVideoDriver->field_134_SurfacePrimary->Release();
                     if (pVideoDriver->field_40_full_screen == -2) // -2 == windowed mode ?
                     {

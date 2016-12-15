@@ -10,6 +10,9 @@ static DWORD dword_100FFF8; // TODO: Reverse me
 
 using TDirectDrawEnumerateEx = decltype(&DirectDrawEnumerateExA);
 
+#define FLAG_HARDWARE_RENDERING 0x40
+#define FLAG_TRIPPLE_BUFFERING 0x10
+
 BOOL WINAPI DirectDrawEnumerateCallBack(
     _In_ GUID FAR *lpGUID,
     _In_ LPSTR    lpDriverDescription,
@@ -137,7 +140,7 @@ HRESULT WINAPI EnumDisplayModesCallBack_1001340(
     TRACE_ENTRYEXIT;
 
     SVideo* pVideoDriver = reinterpret_cast<SVideo*>(lpContext);
-    if (pVideoDriver->field_4_flags & 0x40)
+    if (pVideoDriver->field_4_flags & FLAG_HARDWARE_RENDERING)
     {
         // TODO: Debug/test code skipped
     }
@@ -165,6 +168,23 @@ HRESULT WINAPI EnumDisplayModesCallBack_1001340(
     return DDENUMRET_OK;
 }
 
+static void FreeDDrawInstances(SVideo* pVideoDriver)
+{
+    if (pVideoDriver->field_120_IDDraw4)
+    {
+        //--gDD4Refs_dword_100FFF4;
+        pVideoDriver->field_120_IDDraw4->Release();
+        pVideoDriver->field_120_IDDraw4 = 0;
+    }
+
+    if (pVideoDriver->field_8C_DirectDraw7)
+    {
+        //--gDD7Refs_dword_100FFF0;
+        pVideoDriver->field_8C_DirectDraw7->Release();
+        pVideoDriver->field_8C_DirectDraw7 = 0;
+    }
+}
+
 SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
 {
     TRACE_ENTRYEXIT;
@@ -181,7 +201,7 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
         pVideoDriver->field_78 = param1;
         pVideoDriver->field_14_display_mode_count_2_q = 1;
         pVideoDriver->field_18_num_guids = 2;
-        pVideoDriver->field_4_flags = param2_flags & 0x40 | 0x200;
+        pVideoDriver->field_4_flags = param2_flags & FLAG_HARDWARE_RENDERING | 0x200;
         
         TDirectDrawEnumerateEx pDirectDrawEnumerateEx = nullptr;
         
@@ -216,30 +236,14 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
             auto pDeviceInfo = pVideoDriver->field_2C_device_info_head_ptr;
             auto pNextDevice = pVideoDriver->field_2C_device_info_head_ptr;
 
-            auto pDD7 = &pVideoDriver->field_8C_DirectDraw7;
-            auto ppDD4 = &pVideoDriver->field_120_IDDraw4;
-            auto ppDD7Copy = &pVideoDriver->field_8C_DirectDraw7;
-
             for (;;)
             {
                 pVideoDriver->field_34_active_device_id = pDeviceInfo->field_0_id;
-                auto lpGUID = pDeviceInfo->field_14_pDeviceGuid;
-                if (*ppDD4)
-                {
-                    //--gDD4Refs_dword_100FFF4;
-                    (*ppDD4)->Release();
-                    *ppDD4 = 0;
-                }
 
-                if (*pDD7)
-                {
-                    //--gDD7Refs_dword_100FFF0;
-                    (*pDD7)->Release();
-                    *pDD7 = 0;
-                }
+                FreeDDrawInstances(pVideoDriver);
 
                 // Create DDraw7 Instance
-                pVideoDriver->field_88_last_error = DirectDrawCreate(lpGUID, (LPDIRECTDRAW *)pDD7, 0);
+                pVideoDriver->field_88_last_error = DirectDrawCreate(pDeviceInfo->field_14_pDeviceGuid, (LPDIRECTDRAW *)&pVideoDriver->field_8C_DirectDraw7, 0);
                 //++gDD7Refs_dword_100FFF0;
                 if (pVideoDriver->field_88_last_error)
                 {
@@ -247,26 +251,25 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
                 }
 
                 // Query DDraw4 instance from 7
-                pVideoDriver->field_88_last_error = (*pDD7)->QueryInterface(
-                    IID_IDirectDraw4,
-                    (LPVOID *)&pVideoDriver->field_120_IDDraw4);
+                pVideoDriver->field_88_last_error = pVideoDriver->field_8C_DirectDraw7->QueryInterface(
+                    IID_IDirectDraw4, (LPVOID *)&pVideoDriver->field_120_IDDraw4);
                 //++gDD4Refs_dword_100FFF4;
 
                 if (pVideoDriver->field_88_last_error)
                 {
-                    (*pDD7)->Release();
-                    *pDD7 = 0;
+                    pVideoDriver->field_8C_DirectDraw7->Release();
+                    pVideoDriver->field_8C_DirectDraw7 = 0;
                     return 0;
                 }
 
                 memset(&pVideoDriver->field_1C8_device_caps, 0, sizeof(DDCAPS));
-                memset(&pVideoDriver->field_344_hel_caps, 0, sizeof(DDCAPS));
-                auto pDD4Copy = *ppDD4;
                 pVideoDriver->field_1C8_device_caps.dwSize = sizeof(DDCAPS);
+
+                memset(&pVideoDriver->field_344_hel_caps, 0, sizeof(DDCAPS));
                 pVideoDriver->field_344_hel_caps.dwSize = sizeof(DDCAPS);
-                pVideoDriver->field_88_last_error = pDD4Copy->GetCaps(
-                    &pVideoDriver->field_1C8_device_caps,
-                    &pVideoDriver->field_344_hel_caps);
+
+                pVideoDriver->field_88_last_error = pVideoDriver->field_120_IDDraw4->GetCaps(
+                    &pVideoDriver->field_1C8_device_caps, &pVideoDriver->field_344_hel_caps);
       
                 if (pVideoDriver->field_1C8_device_caps.dwCaps2 & 0x80000)
                 {
@@ -274,44 +277,21 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
                 }
 
                 pNextDevice->field_28_dwVidMemTotal = pVideoDriver->field_1C8_device_caps.dwVidMemTotal;
-                auto pDD4 = *ppDD4;
                 if (pVideoDriver->field_88_last_error)
                 {
-                    if (pDD4)
-                    {
-                        //--gDD4Refs_dword_100FFF4;
-                        (*ppDD4)->Release();
-                        *ppDD4 = 0;
-                    }
-                    if (*ppDD7Copy)
-                    {
-                        //--gDD7Refs_dword_100FFF0;
-                        (*ppDD7Copy)->Release();
-                        *ppDD7Copy = 0;
-                    }
+                    FreeDDrawInstances(pVideoDriver);
                     break;
                 }
 
-                pVideoDriver->field_88_last_error = pDD4->EnumDisplayModes(
+                pVideoDriver->field_88_last_error = pVideoDriver->field_120_IDDraw4->EnumDisplayModes(
                     0,
                     0,
                     pVideoDriver,
                     EnumDisplayModesCallBack_1001340);
 
                 pVideoDriver->field_34_active_device_id = 0;
-                if (ppDD4)
-                {
-                    //--gDD4Refs_dword_100FFF4;
-                    (*ppDD4)->Release();
-                    *ppDD4 = 0;
-                }
 
-                if (*ppDD7Copy)
-                {
-                    //--gDD7Refs_dword_100FFF0;
-                    (*ppDD7Copy)->Release();
-                    *ppDD7Copy = 0;
-                }
+                FreeDDrawInstances(pVideoDriver);
 
                 pNextDevice = pNextDevice->field_10_next_ptr;
                 pDeviceInfo = pNextDevice;
@@ -321,7 +301,6 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
                     // TODO: Check correct
                     return pVideoDriver;
                 }
-                pDD7 = &pVideoDriver->field_8C_DirectDraw7;
             }
         }
 
@@ -561,18 +540,9 @@ s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
                     }
                 }
             }
-            if (pVideoDriver->field_120_IDDraw4)
-            {
-                //--gDD4Refs_dword_100FFF4;
-                pVideoDriver->field_120_IDDraw4->Release();
-                pVideoDriver->field_120_IDDraw4 = 0;
-            }
-            if (pVideoDriver->field_8C_DirectDraw7)
-            {
-                //--gDD7Refs_dword_100FFF0;
-                pVideoDriver->field_8C_DirectDraw7->Release();
-                pVideoDriver->field_8C_DirectDraw7 = 0;
-            }
+
+            FreeDDrawInstances(pVideoDriver);
+
             pVideoDriver->field_34_active_device_id = 0;
         }
         if (deviceId)
@@ -594,39 +564,24 @@ s32 CC Vid_SetDevice(SVideo* pVideoDriver, s32 deviceId)
                 pDevice = 0;
             }
 
-            auto pDeviceGuid = pDevice->field_14_pDeviceGuid;
-            auto ppDD4 = &pVideoDriver->field_120_IDDraw4;
-            if (pVideoDriver->field_120_IDDraw4)
-            {
-                //--gDD4Refs_dword_100FFF4;
-                (*ppDD4)->Release();
-                *ppDD4 = 0;
-            }
-            auto ppDD7 = &pVideoDriver->field_8C_DirectDraw7;
-            if (pVideoDriver->field_8C_DirectDraw7)
-            {
-                //--gDD7Refs_dword_100FFF0;
-                (*ppDD7)->Release();
-                *ppDD7 = 0;
-            }
-            pVideoDriver->field_88_last_error = DirectDrawCreate(
-                pDeviceGuid,
-                (LPDIRECTDRAW *)&pVideoDriver->field_8C_DirectDraw7,
-                0);
+            FreeDDrawInstances(pVideoDriver);
+
+            pVideoDriver->field_88_last_error = DirectDrawCreate(pDevice->field_14_pDeviceGuid,
+                (LPDIRECTDRAW *)&pVideoDriver->field_8C_DirectDraw7, 0);
             //++gDD7Refs_dword_100FFF0;
             if (pVideoDriver->field_88_last_error)
             {
                 return 1;
             }
 
-            pVideoDriver->field_88_last_error = (*ppDD7)->QueryInterface(
-                IID_IDirectDraw4,
-                (LPVOID*)&pVideoDriver->field_120_IDDraw4);
+            pVideoDriver->field_88_last_error = pVideoDriver->field_8C_DirectDraw7->QueryInterface(
+                IID_IDirectDraw4, (LPVOID*)&pVideoDriver->field_120_IDDraw4);
             //++gDD4Refs_dword_100FFF4;
+
             if (pVideoDriver->field_88_last_error)
             {
-                (*ppDD7)->Release();
-                *ppDD7 = 0;
+                pVideoDriver->field_8C_DirectDraw7->Release();
+                pVideoDriver->field_8C_DirectDraw7 = 0;
                 return 1;
             }
             pVideoDriver->field_34_active_device_id = deviceId;
@@ -640,12 +595,12 @@ static s32 SetDisplayModeFromSurface(SVideo* pVideoDriver,  SDisplayMode* pDispl
     TRACE_ENTRYEXIT;
 
     DDSCAPS2 caps = {};
-    caps.dwCaps = 4;
+    caps.dwCaps = DDSCAPS_BACKBUFFER;
     if (pVideoDriver->field_134_SurfacePrimary->GetAttachedSurface(&caps, &pVideoDriver->field_138_Surface))
     {
         return 1;
     }
-
+    
     DDSURFACEDESC2 ddsurface = {};
     ddsurface.dwSize = sizeof(LPDDSURFACEDESC2);
     pVideoDriver->field_138_Surface->GetSurfaceDesc(&ddsurface);
@@ -659,9 +614,11 @@ static s32 SetDisplayModeFromSurface(SVideo* pVideoDriver,  SDisplayMode* pDispl
     pVideoDriver->field_58 = pDisplayMode.field_18;
     pVideoDriver->field_4C_rect_bottom = pDisplayMode_1->field_C_height;
     pVideoDriver->field_5C = pDisplayMode.field_1C;
+
     pVideoDriver->field_64_r = pDisplayMode.field_24;
     pVideoDriver->field_60_g = pDisplayMode.field_20;
     pVideoDriver->field_68_b = pDisplayMode.field_28;
+
     pVideoDriver->field_70 = pDisplayMode.field_30;
     pVideoDriver->field_6C = pDisplayMode.field_2C;
     pVideoDriver->field_74 = pDisplayMode.field_34;
@@ -721,21 +678,8 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                 }
             }
 
-            auto ppDD4 = &pVideoDriver->field_120_IDDraw4;
-            if (pVideoDriver->field_120_IDDraw4)
-            {
-                //--gDD4Refs_dword_100FFF4;
-                (*ppDD4)->Release();
-                *ppDD4 = 0;
-            }
+            FreeDDrawInstances(pVideoDriver);
 
-            auto ppDD7 = &pVideoDriver->field_8C_DirectDraw7;
-            if (pVideoDriver->field_8C_DirectDraw7)
-            {
-                //--gDD7Refs_dword_100FFF0;
-                (*ppDD7)->Release();
-                *ppDD7 = 0;
-            }
             pVideoDriver->field_88_last_error = DirectDrawCreate(pDevice->field_14_pDeviceGuid, (LPDIRECTDRAW *)&pVideoDriver->field_8C_DirectDraw7, 0);
             //++gDD7Refs_dword_100FFF0;
             if (pVideoDriver->field_88_last_error)
@@ -743,12 +687,12 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                 return 1;
             }
 
-            pVideoDriver->field_88_last_error = (*ppDD7)->QueryInterface(IID_IDirectDraw4, (LPVOID*)&pVideoDriver->field_120_IDDraw4);
+            pVideoDriver->field_88_last_error = pVideoDriver->field_8C_DirectDraw7->QueryInterface(IID_IDirectDraw4, (LPVOID*)&pVideoDriver->field_120_IDDraw4);
             //++gDD4Refs_dword_100FFF4;
             if (pVideoDriver->field_88_last_error)
             {
-                (*ppDD7)->Release();
-                *ppDD7 = 0;
+                pVideoDriver->field_8C_DirectDraw7->Release();
+                pVideoDriver->field_8C_DirectDraw7 = 0;
                 return 1;
             }
             pVideoDriver->field_34_active_device_id = 1;
@@ -761,7 +705,6 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 
 
         memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(pVideoDriver->field_13C_DDSurfaceDesc7));
-        //v38 = pVideoDriver->field_120_IDDraw4;
         pVideoDriver->field_13C_DDSurfaceDesc7.dwSize = sizeof(DDSURFACEDESC2);
         pVideoDriver->field_13C_DDSurfaceDesc7.dwFlags = 1;
         pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 512;
@@ -807,7 +750,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
             pVideoDriver->field_4_flags &= 0xDFFFFFFF;
         }
 
-        if (pVideoDriver->field_4_flags & 0x40)
+        if (pVideoDriver->field_4_flags & FLAG_HARDWARE_RENDERING)
         {
             pVideoDriver->field_4_flags |= 0x20000000;
             pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps &= (0xF7 | 0x60); // TODO: Only change 1st byte here
@@ -864,19 +807,8 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
             }
         }
 
-        if (pVideoDriver->field_120_IDDraw4)
-        {
-            //--gDD4Refs_dword_100FFF4;
-            pVideoDriver->field_120_IDDraw4->Release();
-            pVideoDriver->field_120_IDDraw4 = 0;
-        }
+        FreeDDrawInstances(pVideoDriver);
 
-        if (pVideoDriver->field_8C_DirectDraw7)
-        {
-            //--gDD7Refs_dword_100FFF0;
-            pVideoDriver->field_8C_DirectDraw7->Release();
-            pVideoDriver->field_8C_DirectDraw7 = 0;
-        }
         pVideoDriver->field_34_active_device_id = 0;
     }
     if (modeId == -2 && pVideoDriver->field_34_active_device_id > 1)
@@ -935,18 +867,9 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                     }
                 }
             }
-            if (pVideoDriver->field_120_IDDraw4)
-            {
-                //--gDD4Refs_dword_100FFF4;
-                pVideoDriver->field_120_IDDraw4->Release();
-                pVideoDriver->field_120_IDDraw4 = 0;
-            }
-            if (pVideoDriver->field_8C_DirectDraw7)
-            {
-                //--gDD7Refs_dword_100FFF0;
-                pVideoDriver->field_8C_DirectDraw7->Release();
-                pVideoDriver->field_8C_DirectDraw7 = 0;
-            }
+            
+            FreeDDrawInstances(pVideoDriver);
+
             pVideoDriver->field_34_active_device_id = 0;
         }
         if (deviceId)
@@ -964,21 +887,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                 }
             }
 
-            auto ppDD4_1 = &pVideoDriver->field_120_IDDraw4;
-            if (pVideoDriver->field_120_IDDraw4)
-            {
-                //--gDD4Refs_dword_100FFF4;
-                (*ppDD4_1)->Release();
-                *ppDD4_1 = 0;
-            }
-
-            auto ppDD7_1 = &pVideoDriver->field_8C_DirectDraw7;
-            if (pVideoDriver->field_8C_DirectDraw7)
-            {
-                //--gDD7Refs_dword_100FFF0;
-                (*ppDD7_1)->Release();
-                *ppDD7_1 = 0;
-            }
+            FreeDDrawInstances(pVideoDriver);
 
             pVideoDriver->field_88_last_error = DirectDrawCreate(pDevice_1->field_14_pDeviceGuid,
                 (LPDIRECTDRAW *)&pVideoDriver->field_8C_DirectDraw7, 0);
@@ -989,13 +898,13 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
                 return 1;
             }
 
-            pVideoDriver->field_88_last_error = (*ppDD7_1)->QueryInterface(IID_IDirectDraw4, (LPVOID *)&pVideoDriver->field_120_IDDraw4);
+            pVideoDriver->field_88_last_error = pVideoDriver->field_8C_DirectDraw7->QueryInterface(IID_IDirectDraw4, (LPVOID *)&pVideoDriver->field_120_IDDraw4);
             //++gDD4Refs_dword_100FFF4;
 
             if (pVideoDriver->field_88_last_error)
             {
-                (*ppDD7_1)->Release();
-                *ppDD7_1 = 0;
+                pVideoDriver->field_8C_DirectDraw7->Release();
+                pVideoDriver->field_8C_DirectDraw7 = 0;
                 return 1;
             }
 
@@ -1020,18 +929,18 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
     
 
     pVideoDriver->field_4_flags |= 0xA0000000;
-    memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(pVideoDriver->field_13C_DDSurfaceDesc7));
+    memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(DDSURFACEDESC2));
     pVideoDriver->field_13C_DDSurfaceDesc7.dwSize = 124;
     pVideoDriver->field_13C_DDSurfaceDesc7.dwFlags = 33;
     pVideoDriver->field_13C_DDSurfaceDesc7.dwBackBufferCount = 2;
     pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 16920;
 
-    if (pVideoDriver->field_4_flags & 0x40) // 0x40 = hardware rendering enabled
+    if (pVideoDriver->field_4_flags & FLAG_HARDWARE_RENDERING)
     {
         pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = 25112;
     }
 
-    if (pVideoDriver->field_4_flags & 0x10) // 0x10 == Tripple buffering
+    if (pVideoDriver->field_4_flags & FLAG_TRIPPLE_BUFFERING)
     {
         if (!pVideoDriver->field_120_IDDraw4->CreateSurface(&pVideoDriver->field_13C_DDSurfaceDesc7, &pVideoDriver->field_134_SurfacePrimary, 0))
         {
@@ -1102,74 +1011,72 @@ void CC Vid_ReleaseSurface(SVideo* pVideoDriver)
     }
 }
 
+static bool SurfaceRestored(SVideo* pVideo, IDirectDrawSurface4* pSurface)
+{
+    if (pSurface->IsLost() == DDERR_SURFACELOST)
+    {
+        pVideo->field_4_flags |= 0x10000000u;
+        if (pSurface->Restore())
+        {
+            return true;
+        }
+    }
+    else
+    {
+        pVideo->field_4_flags &= 0xEFFFFFFF;
+    }
+    return false;
+}
+
 void CC Vid_FlipBuffers(SVideo* pVideo)
 {
     TRACE_ENTRYEXIT;
 
-    if (pVideo)
+    if (pVideo && pVideo->field_134_SurfacePrimary && pVideo->field_138_Surface)
     {
-        if (pVideo->field_134_SurfacePrimary)
+        if (SurfaceRestored(pVideo, pVideo->field_134_SurfacePrimary))
         {
-            if (pVideo->field_138_Surface)
+            return;
+        }
+
+        if (SurfaceRestored(pVideo, pVideo->field_138_Surface))
+        {
+            return;
+        }
+
+        if (pVideo->field_80_active_mode_q == 1)
+        {
+            if (pVideo->field_4_flags & 2)
             {
-                if (pVideo->field_134_SurfacePrimary->IsLost() == DDERR_SURFACELOST)
-                {
-                    pVideo->field_4_flags |= 0x10000000u;
-                    if (pVideo->field_134_SurfacePrimary->Restore())
-                    {
-                        return;
-                    }
-                }
-                else
-                {
-                    pVideo->field_4_flags &= 0xEFFFFFFF;
-                }
-
-                if (pVideo->field_138_Surface->IsLost() == DDERR_SURFACELOST)
-                {
-                    pVideo->field_4_flags |= 0x10000000;
-                    if (pVideo->field_138_Surface->Restore())
-                        return;
-                }
-                else
-                {
-                    pVideo->field_4_flags &= 0xEFFFFFFF;
-                }
-
-                if (pVideo->field_80_active_mode_q == 1)
-                {
-                    if (pVideo->field_4_flags & 2)
-                    {
-                        pVideo->field_134_SurfacePrimary->Flip(0, 9);
-                    }
-                    else
-                    {
-                        pVideo->field_134_SurfacePrimary->Flip(0, 1);
-                    }
-                }
-                else
-                {
-                    RECT r = {};
-                    r.bottom = pVideo->field_4C_rect_bottom;
-                    r.top = 0;
-                    r.left = 0;
-                    r.right = pVideo->field_48_rect_right;
-
-                    RECT clientRect = {};
-                    GetClientRect(pVideo->field_4C0_hwnd, &clientRect);
-                    /* TODO FIX ME
-                    ClientToScreen(pVideo->field_4C0_hwnd, &clientRect.left);
-                    clientRect.right += Point.x - clientRect.left;
-                    clientRect.bottom += Point.y - clientRect.top;
-                    */
-                    pVideo->field_134_SurfacePrimary->Blt(
-                        &clientRect,
-                        pVideo->field_138_Surface,
-                        &r,
-                        0x1000000,
-                        0);
-                }
+                pVideo->field_134_SurfacePrimary->Flip(nullptr, DDFLIP_NOVSYNC | DDFLIP_WAIT);
             }
+            else
+            {
+                pVideo->field_134_SurfacePrimary->Flip(nullptr, DDFLIP_WAIT);
+            }
+        }
+        else
+        {
+            RECT r = {};
+            r.bottom = pVideo->field_4C_rect_bottom;
+            r.top = 0;
+            r.left = 0;
+            r.right = pVideo->field_48_rect_right;
+
+            RECT clientRect = {};
+            GetClientRect(pVideo->field_4C0_hwnd, &clientRect);
+            /* TODO FIX ME
+            ClientToScreen(pVideo->field_4C0_hwnd, &clientRect.left);
+            clientRect.right += Point.x - clientRect.left;
+            clientRect.bottom += Point.y - clientRect.top;
+            */
+            pVideo->field_134_SurfacePrimary->Blt(
+                &clientRect,
+                pVideo->field_138_Surface,
+                &r,
+                0x1000000,
+                0);
+
         }
     }
 }
@@ -1200,20 +1107,8 @@ void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
             }
         }
 
-        if (pVideoDriver->field_120_IDDraw4)
-        {
-            //--gDD4Refs_dword_100FFF4;
-            pVideoDriver->field_120_IDDraw4->Release();
-            pVideoDriver->field_120_IDDraw4 = 0;
-        }
+        FreeDDrawInstances(pVideoDriver);
 
-        if (pVideoDriver->field_8C_DirectDraw7)
-        {
-            //--gDD7Refs_dword_100FFF0;
-            pVideoDriver->field_8C_DirectDraw7->Release();
-            pVideoDriver->field_8C_DirectDraw7 = 0;
-        }
-        
         // Free display modes
         auto pCurrent = pVideoDriver->field_24_head_ptr;
         if (pCurrent)

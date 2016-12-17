@@ -912,7 +912,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
         }
     }
 
-    if (pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(hWnd, DDSCL_SETFOCUSWINDOW | DDSCL_FULLSCREEN))
+    if (pVideoDriver->field_8C_DirectDraw7->SetCooperativeLevel(hWnd, DDSCL_ALLOWMODEX | DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN))
     {
         return 1;
     }

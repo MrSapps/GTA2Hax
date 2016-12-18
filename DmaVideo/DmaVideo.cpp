@@ -917,6 +917,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
         return 1;
     }
 
+    /*
     // HACK: Typecast to get to older SetDisplayMode, else stack will be smashed
     IDirectDraw* pOld = (IDirectDraw*)pVideoDriver->field_8C_DirectDraw7;
     if (pOld->SetDisplayMode(
@@ -926,7 +927,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
     {
         return 1;
     }
-    
+    */
 
     pVideoDriver->field_4_flags |= 0xA0000000;
     memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(DDSURFACEDESC2));
@@ -1058,25 +1059,18 @@ void CC Vid_FlipBuffers(SVideo* pVideo)
         else
         {
             RECT r = {};
-            r.bottom = pVideo->field_4C_rect_bottom;
             r.top = 0;
             r.left = 0;
+            r.bottom = pVideo->field_4C_rect_bottom;
             r.right = pVideo->field_48_rect_right;
 
-            RECT clientRect = {};
-            GetClientRect(pVideo->field_4C0_hwnd, &clientRect);
-            /* TODO FIX ME
-            ClientToScreen(pVideo->field_4C0_hwnd, &clientRect.left);
-            clientRect.right += Point.x - clientRect.left;
-            clientRect.bottom += Point.y - clientRect.top;
-            */
             pVideo->field_134_SurfacePrimary->Blt(
-                &clientRect,
-                pVideo->field_138_Surface,
-                &r,
-                0x1000000,
-                0);
-
+                NULL,
+                pVideo->field_138_Surface, // Source
+                &r,                        // Source rect size
+                DDBLT_WAIT,
+                0); 
+            
         }
     }
 }

@@ -168,12 +168,12 @@ int CC gbh_PrintBitmap(int a1, int a2)
     return 0;
 }
 
-unsigned int CC gbh_RegisterPalette(int a1, DWORD *a2)
+unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
 {
     return 0;
 }
 
-WORD* CC gbh_RegisterTexture(__int16 a1, __int16 a2, int a3, int a4, char a5)
+WORD* CC gbh_RegisterTexture(__int16 width, __int16 height, int pData, int a4, char a5)
 {
     return 0;
 }

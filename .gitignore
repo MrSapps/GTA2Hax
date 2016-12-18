@@ -7,3 +7,4 @@ Release/
 *.suo
 *.opendb
 ipch/
+*.plog

@@ -8,6 +8,25 @@ using u8 = unsigned char;
 
 #define CC __stdcall
 
+struct STexture
+{
+    u16 field_0;
+    u16 field_2;
+    u16 field_4;
+    u16 field_6;
+    u32 field_8;
+    u8 field_C;
+    u8 field_D;
+    u16 field_E_width;
+    u16 field_10_height;
+    u8 field_12;
+    u8 field_13_flags;
+    void* field_14_data;
+    u32 field_18_pPlat;
+    u32 field_1C_ptr;
+};
+static_assert(sizeof(STexture) == 0x20, "Wrong sized STexture");
+
 void CC ConvertColourBank(s32 unknown);
 int CC DrawLine(int a1, int a2, int a3, int a4, int a5);
 void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5);
@@ -31,7 +50,7 @@ void CC gbh_EndLevel();
 __int64 CC gbh_EndScene();
 int CC gbh_FreeImageTable();
 void CC gbh_FreePalette(int a1);
-void CC gbh_FreeTexture(void *Memory);
+void CC gbh_FreeTexture(STexture* pTexture);
 int* CC gbh_GetGlobals();
 int CC gbh_GetUsedCache(int a1);
 s32 CC gbh_Init(int a1);
@@ -42,7 +61,7 @@ int CC gbh_LockTexture(int a1);
 void CC gbh_Plot(int a1, int a2, int a3, int a4);
 int CC gbh_PrintBitmap(int a1, int a2);
 unsigned int CC gbh_RegisterPalette(int a1, DWORD *a2);
-WORD* CC gbh_RegisterTexture(__int16 a1, __int16 a2, int a3, int a4, char a5);
+STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int a4, char a5);
 void CC gbh_ResetLights();
 void CC gbh_SetAmbient(float a1);
 int CC gbh_SetCamera(int a1, int a2, int a3, int a4);

@@ -118,9 +118,10 @@ void CC gbh_FreePalette(int a1)
 
 }
 
-void CC gbh_FreeTexture(void *Memory)
+void CC gbh_FreeTexture(STexture* pTexture)
 {
-
+    // TODO: Other stuff required
+    free(pTexture);
 }
 
 int* CC gbh_GetGlobals()
@@ -138,7 +139,7 @@ s32 CC gbh_Init(int a1)
     return 0;
 }
 
-u32 CC gbh_InitDLL(int a1, int a2, int a3)
+u32 CC gbh_InitDLL(int pVideoDriver, int a2, int a3)
 {
     return 0;
 }
@@ -173,9 +174,27 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
     return 0;
 }
 
-WORD* CC gbh_RegisterTexture(__int16 width, __int16 height, int pData, int a4, char a5)
+static u32 gTextureId = 0;
+
+STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int a4, char a5)
 {
-    return 0;
+    STexture* pTexture = reinterpret_cast<STexture*>(malloc(sizeof(STexture)));
+    if (pTexture)
+    {
+        memset(pTexture, 0, sizeof(STexture));
+        pTexture->field_0 = gTextureId++;
+        //pTexture->field_4 = palt[a4];
+        pTexture->field_E_width = width;
+        pTexture->field_10_height = height;
+        //pTexture->field_12 = pSomething[a4];
+        //if (a5 && isAtiRagePro)
+        {
+            //pTexture->field_13_flags = 0x80;
+        }
+        pTexture->field_14_data = pData;
+        //pTexture->field_18_pPlat = palt[a4];
+    }
+    return pTexture;
 }
 
 void CC gbh_ResetLights()

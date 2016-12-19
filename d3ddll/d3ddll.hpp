@@ -57,9 +57,27 @@ u32* CC gbh_GetGlobals();
 int CC gbh_GetUsedCache(int a1);
 s32 CC gbh_Init(int a1);
 u32 CC gbh_InitDLL(SVideo* pVideoDriver);
-signed int CC gbh_InitImageTable(int a1);
-signed int CC gbh_LoadImage(int a1);
-int CC gbh_LockTexture(int a1);
+signed int CC gbh_InitImageTable(int tableSize);
+
+struct SImage
+{
+    BYTE field_0;
+    BYTE field_1;
+    BYTE field_2;
+    BYTE field_3;
+    DWORD field_4;
+    DWORD field_8;
+    WORD field_C;
+    BYTE field_E;
+    BYTE field_F;
+    BYTE field_10;
+    BYTE field_11;
+    WORD field_12;
+};
+static_assert(sizeof(SImage) == 0x14, "Wrong sized SImage");
+
+signed int CC gbh_LoadImage(SImage* pImage);
+int CC gbh_LockTexture(STexture* pTexture);
 void CC gbh_Plot(int a1, int a2, int a3, int a4);
 int CC gbh_PrintBitmap(int a1, int a2);
 unsigned int CC gbh_RegisterPalette(int a1, DWORD *a2);
@@ -69,4 +87,4 @@ void CC gbh_SetAmbient(float a1);
 int CC gbh_SetCamera(int a1, int a2, int a3, int a4);
 int CC gbh_SetColourDepth();
 s32 CC gbh_SetWindow(int a1, int a2, int a3, int a4);
-int CC gbh_UnlockTexture(int a1);
+int CC gbh_UnlockTexture(STexture* pTexture);

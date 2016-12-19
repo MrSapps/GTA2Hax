@@ -6,7 +6,7 @@
 #pragma comment(lib, "dxguid.lib")
 
 static HINSTANCE gHinstance;
-static DWORD dword_100FFF8; // TODO: Reverse me
+static SFunctions* dword_100FFF8; // TODO: Reverse me
 
 using TDirectDrawEnumerateEx = decltype(&DirectDrawEnumerateExA);
 
@@ -195,7 +195,7 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
         ::FreeLibrary(hDirectDraw);
         SVideo* pVideoDriver = new SVideo();
         memset(pVideoDriver, 0, sizeof(SVideo));
-        pVideoDriver->field_7C = gHinstance;
+        pVideoDriver->field_7C_self_dll_handle = gHinstance;
         pVideoDriver->field_84_from_initDLL = dword_100FFF8;
         pVideoDriver->field_0 = 1;
         pVideoDriver->field_78 = param1;
@@ -1259,7 +1259,7 @@ s32 CC Vid_WindowProc(SVideo* pVideoDriver, HWND hwnd, DWORD uMsg, WPARAM wParam
     return 0;
 }
 
-s32 CC Vid_InitDLL(HINSTANCE hInstance, s32 a2)
+s32 CC Vid_InitDLL(HINSTANCE hInstance, SFunctions* a2)
 {
     TRACE_ENTRYEXIT;
 

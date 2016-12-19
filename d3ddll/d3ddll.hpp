@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../DmaVideo/DmaVideo.hpp"
+
 using u16 = unsigned short int;
 using s32 = signed int;
 using u32 = unsigned int;
@@ -38,7 +40,7 @@ int gbh_BeginScene();
 int CC gbh_BlitBuffer(int a1, int a2, int a3, int a4, int a5, int a6);
 char CC gbh_BlitImage(int a1, int a2, int a3, int a4, int a5, int a6, int a7);
 void CC gbh_CloseDLL();
-int CC gbh_CloseScreen(int a1);
+void CC gbh_CloseScreen(SVideo* pVideo);
 unsigned int CC gbh_Convert16BitGraphic(int a1, unsigned int a2, WORD *a3, signed int a4);
 unsigned int CC gbh_ConvertColour(unsigned __int8 a1, unsigned __int8 a2, unsigned __int8 a3);
 int CC gbh_DrawFlatRect(int a1, int a2);
@@ -51,10 +53,10 @@ __int64 CC gbh_EndScene();
 int CC gbh_FreeImageTable();
 void CC gbh_FreePalette(int a1);
 void CC gbh_FreeTexture(STexture* pTexture);
-int* CC gbh_GetGlobals();
+u32* CC gbh_GetGlobals();
 int CC gbh_GetUsedCache(int a1);
 s32 CC gbh_Init(int a1);
-u32 CC gbh_InitDLL(int a1, int a2, int a3);
+u32 CC gbh_InitDLL(SVideo* pVideoDriver);
 signed int CC gbh_InitImageTable(int a1);
 signed int CC gbh_LoadImage(int a1);
 int CC gbh_LockTexture(int a1);

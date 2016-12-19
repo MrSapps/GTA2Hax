@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <ddraw.h>
 
+struct SFunctions;
+
 struct SVideo
 {
     DWORD field_0;
@@ -36,9 +38,9 @@ struct SVideo
     DWORD field_70;
     DWORD field_74;
     DWORD field_78;
-    HINSTANCE field_7C;
+    HINSTANCE field_7C_self_dll_handle;
     DWORD field_80_active_mode_q;
-    DWORD field_84_from_initDLL;
+    SFunctions* field_84_from_initDLL;
     DWORD field_88_last_error;
     IDirectDraw7* field_8C_DirectDraw7;
     DWORD field_90;
@@ -167,5 +169,64 @@ s32 CC Vid_FreeSurface(SVideo* pVideoDriver);
 s32 CC Vid_ClearScreen(SVideo* pVideoDriver, u8 aR, u8 aG, u8 aB, s32 aLeft, s32 aTop, s32 aRight, s32 aBottom);
 s32 CC Vid_SetGamma(SVideo* pVideoDriver, f32 a2, f32 a3, f32 a4);
 s32 CC Vid_WindowProc(SVideo* pVideoDriver, HWND hwnd, DWORD uMsg, WPARAM wParam, LPARAM lParam);
-s32 CC Vid_InitDLL(HINSTANCE hInstance, s32 a2);
+s32 CC Vid_InitDLL(HINSTANCE hInstance, SFunctions* a2);
 SVidVersion* CC Vid_GetVersion();
+
+struct SFunctions
+{
+    decltype(&Vid_GetVersion) pVid_GetVersion;
+    decltype(&Vid_Init_SYS) pVid_Init_SYS;
+    decltype(&Vid_CheckMode) pVid_CheckMode;
+    decltype(&Vid_FindMode) pVid_FindMode;
+    decltype(&Vid_FindFirstMode) pVid_FindFirstMode;
+    decltype(&Vid_FindNextMode) pVid_FindNextMode;
+    decltype(&Vid_FindDevice) pVid_FindDevice;
+    decltype(&Vid_SetDevice) pVid_SetDevice;
+    decltype(&Vid_CloseScreen) pVid_CloseScreen;
+    decltype(&Vid_SetMode) pVid_SetMode;
+    decltype(&Vid_FlipBuffers) pVid_FlipBuffers;
+    decltype(&Vid_ReleaseSurface) pVid_ReleaseSurface;
+    decltype(&Vid_GrabSurface) pVid_GrabSurface;
+    decltype(&Vid_ShutDown_SYS) pVid_ShutDown_SYS;
+    decltype(&Vid_EnableWrites) pVid_EnableWrites;
+    decltype(&Vid_DisableWrites) pVid_DisableWrites;
+    decltype(&Vid_GetSurface) pVid_GetSurface;
+    decltype(&Vid_FreeSurface) pVid_FreeSurface;
+    decltype(&Vid_ClearScreen) pVid_ClearScreen;
+    decltype(&Vid_WindowProc) pVid_WindowProc;
+    decltype(&Vid_InitDLL) pVid_InitDLL;
+    decltype(&Vid_SetGamma) pVid_SetGamma;
+    const char* mErrStr; // NOT USED - just used to check struct is never reassigned
+};
+
+template<class T>
+void GetFunc(HINSTANCE hInstance, T& result, const char* name)
+{
+    result = reinterpret_cast<T>(GetProcAddress(hInstance, name));
+}
+
+void PopulateSFunctions(HINSTANCE hDmaVideoDll, SFunctions& funcs)
+{
+    GetFunc(hDmaVideoDll, funcs.pVid_GetVersion, "Vid_GetVersion");
+    GetFunc(hDmaVideoDll, funcs.pVid_Init_SYS, "Vid_Init_SYS");
+    GetFunc(hDmaVideoDll, funcs.pVid_CheckMode, "Vid_CheckMode");
+    GetFunc(hDmaVideoDll, funcs.pVid_FindMode, "Vid_FindMode");
+    GetFunc(hDmaVideoDll, funcs.pVid_FindFirstMode, "Vid_FindFirstMode");
+    GetFunc(hDmaVideoDll, funcs.pVid_FindNextMode, "Vid_FindNextMode");
+    GetFunc(hDmaVideoDll, funcs.pVid_FindDevice, "Vid_FindDevice");
+    GetFunc(hDmaVideoDll, funcs.pVid_SetDevice, "Vid_SetDevice");
+    GetFunc(hDmaVideoDll, funcs.pVid_CloseScreen, "Vid_CloseScreen");
+    GetFunc(hDmaVideoDll, funcs.pVid_SetMode, "Vid_SetMode");
+    GetFunc(hDmaVideoDll, funcs.pVid_FlipBuffers, "Vid_FlipBuffers");
+    GetFunc(hDmaVideoDll, funcs.pVid_ReleaseSurface, "Vid_ReleaseSurface");
+    GetFunc(hDmaVideoDll, funcs.pVid_GrabSurface, "Vid_GrabSurface");
+    GetFunc(hDmaVideoDll, funcs.pVid_ShutDown_SYS, "Vid_ShutDown_SYS");
+    GetFunc(hDmaVideoDll, funcs.pVid_EnableWrites, "Vid_EnableWrites");
+    GetFunc(hDmaVideoDll, funcs.pVid_DisableWrites, "Vid_DisableWrites");
+    GetFunc(hDmaVideoDll, funcs.pVid_GetSurface, "Vid_GetSurface");
+    GetFunc(hDmaVideoDll, funcs.pVid_FreeSurface, "Vid_FreeSurface");
+    GetFunc(hDmaVideoDll, funcs.pVid_ClearScreen, "Vid_ClearScreen");
+    GetFunc(hDmaVideoDll, funcs.pVid_WindowProc, "Vid_WindowProc");
+    GetFunc(hDmaVideoDll, funcs.pVid_InitDLL, "Vid_InitDLL");
+    GetFunc(hDmaVideoDll, funcs.pVid_SetGamma, "Vid_SetGamma");
+}

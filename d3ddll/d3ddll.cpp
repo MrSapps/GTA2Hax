@@ -308,7 +308,7 @@ s32 CC gbh_Init(int a1)
     return result;
 }
 
-static SFunctions gVideoDriverFuncs;
+static SVideoFunctions gVideoDriverFuncs;
 
 static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
 {
@@ -323,11 +323,16 @@ static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
 }
 
 
+S3DFunctions gFuncs;
+
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
+    HMODULE hOld = LoadLibrary(L"_d3ddll.dll");
+    PopulateS3DFunctions(hOld, gFuncs);
+
     gpVideoDriver_E13DC8 = pVideoDriver;
 
-    PopulateSFunctions(pVideoDriver->field_7C_self_dll_handle, gVideoDriverFuncs);
+    PopulateSVideoFunctions(pVideoDriver->field_7C_self_dll_handle, gVideoDriverFuncs);
 
     pVideoDriver->field_84_from_initDLL->pVid_CloseScreen = gbh_CloseScreen;
     pVideoDriver->field_84_from_initDLL->pVid_GetSurface = gVideoDriverFuncs.pVid_GetSurface;

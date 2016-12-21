@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <ddraw.h>
 
-struct SFunctions;
+struct SVideoFunctions;
 
 struct SVideo
 {
@@ -40,7 +40,7 @@ struct SVideo
     DWORD field_78;
     HINSTANCE field_7C_self_dll_handle;
     DWORD field_80_active_mode_q;
-    SFunctions* field_84_from_initDLL;
+    SVideoFunctions* field_84_from_initDLL;
     DWORD field_88_last_error;
     IDirectDraw7* field_8C_DirectDraw7;
     DWORD field_90;
@@ -169,10 +169,10 @@ s32 CC Vid_FreeSurface(SVideo* pVideoDriver);
 s32 CC Vid_ClearScreen(SVideo* pVideoDriver, u8 aR, u8 aG, u8 aB, s32 aLeft, s32 aTop, s32 aRight, s32 aBottom);
 s32 CC Vid_SetGamma(SVideo* pVideoDriver, f32 a2, f32 a3, f32 a4);
 s32 CC Vid_WindowProc(SVideo* pVideoDriver, HWND hwnd, DWORD uMsg, WPARAM wParam, LPARAM lParam);
-s32 CC Vid_InitDLL(HINSTANCE hInstance, SFunctions* a2);
+s32 CC Vid_InitDLL(HINSTANCE hInstance, SVideoFunctions* a2);
 SVidVersion* CC Vid_GetVersion();
 
-struct SFunctions
+struct SVideoFunctions
 {
     decltype(&Vid_GetVersion) pVid_GetVersion;
     decltype(&Vid_Init_SYS) pVid_Init_SYS;
@@ -200,12 +200,12 @@ struct SFunctions
 };
 
 template<class T>
-void GetFunc(HINSTANCE hInstance, T& result, const char* name)
+inline void GetFunc(HINSTANCE hInstance, T& result, const char* name)
 {
     result = reinterpret_cast<T>(GetProcAddress(hInstance, name));
 }
 
-void PopulateSFunctions(HINSTANCE hDmaVideoDll, SFunctions& funcs)
+inline void PopulateSVideoFunctions(HINSTANCE hDmaVideoDll, SVideoFunctions& funcs)
 {
     GetFunc(hDmaVideoDll, funcs.pVid_GetVersion, "Vid_GetVersion");
     GetFunc(hDmaVideoDll, funcs.pVid_Init_SYS, "Vid_Init_SYS");

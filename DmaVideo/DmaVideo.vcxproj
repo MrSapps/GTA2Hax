@@ -193,6 +193,11 @@ copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
   <ItemGroup>
     <None Include="Exports.def" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hook\Hook.vcxproj">
+      <Project>{370e09ef-5e59-414b-8f84-e9b4db94cea1}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

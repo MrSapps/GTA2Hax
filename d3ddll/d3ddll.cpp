@@ -6,6 +6,7 @@
 
 #pragma comment(lib, "dxguid.lib")
 
+static S3DFunctions gFuncs;
 
 void CC ConvertColourBank(s32 unknown)
 {
@@ -25,23 +26,27 @@ void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5)
 
 std::vector<BYTE> hack(4096);
 
-int CC MakeScreenTable(int* result, int a2, unsigned int a3, int a4)
+int CC MakeScreenTable(int* result, int a2, unsigned int a3)
 {
     // TODO
     //__debugbreak();
-    return (int)hack.data();
+    //return (int)hack.data();
+
+    return gFuncs.pMakeScreenTable(result, a2, a3);
 }
 
 int CC gbh_AddLight(int a1)
 {
-    __debugbreak();
-    return 0;
+    //__debugbreak();
+    //return 0;
+    return gFuncs.pgbh_AddLight(a1);
 }
 
 char CC gbh_AssignPalette(int a1, int a2)
 {
-    __debugbreak();
-    return 0;
+    //__debugbreak();
+    //return 0;
+    return gFuncs.pgbh_AssignPalette(a1, a2);
 }
 
 void CC gbh_BeginLevel()
@@ -51,8 +56,10 @@ void CC gbh_BeginLevel()
 
 int gbh_BeginScene()
 {
-    __debugbreak();
-    return 0;
+    //__debugbreak();
+    //return 0;
+
+    return gFuncs.pgbh_BeginScene();
 }
 
 int CC gbh_BlitBuffer(int a1, int a2, int a3, int a4, int a5, int a6)
@@ -63,8 +70,9 @@ int CC gbh_BlitBuffer(int a1, int a2, int a3, int a4, int a5, int a6)
 
 char CC gbh_BlitImage(int a1, int a2, int a3, int a4, int a5, int a6, int a7)
 {
-    __debugbreak();
-    return 0;
+    //__debugbreak();
+    //return 0;
+    return gFuncs.pgbh_BlitImage(a1, a2, a3, a4, a5, a6, a7);
 }
 
 void CC gbh_CloseDLL()
@@ -97,7 +105,8 @@ int CC gbh_DrawFlatRect(int a1, int a2)
 
 void CC gbh_DrawQuad(int a1, int a2, int a3, int a4)
 {
-    __debugbreak();
+    //__debugbreak();
+    return gFuncs.pgbh_DrawQuad(a1, a2, a3, a4);
 }
 
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
@@ -108,13 +117,14 @@ void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
 // Same as gbh_DrawTile
 s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4)
 {
-    __debugbreak();
-    return 0;
+    //__debugbreak();
+    //return 0;
+    return gFuncs.pgbh_DrawTilePart(a1, a2, a3, a4);
 }
 
 void CC gbh_DrawTriangle(int a1, int a2, int a3, int a4)
 {
-    __debugbreak();
+//    __debugbreak();
 }
 
 void CC gbh_EndLevel()
@@ -124,14 +134,16 @@ void CC gbh_EndLevel()
 
 __int64 CC gbh_EndScene()
 {
-    __debugbreak();
-    return 0;
+    //__debugbreak();
+    //return 0;
+    return gFuncs.pgbh_EndScene();
 }
 
 int CC gbh_FreeImageTable()
 {
-    __debugbreak();
-    return 0;
+   // __debugbreak();
+   // return 0;
+    return gFuncs.pgbh_FreeImageTable();
 }
 
 void CC gbh_FreePalette(int a1)
@@ -142,7 +154,8 @@ void CC gbh_FreePalette(int a1)
 void CC gbh_FreeTexture(STexture* pTexture)
 {
     // TODO: Other stuff required
-    free(pTexture);
+   // free(pTexture);
+    gFuncs.pgbh_FreeTexture(pTexture);
 }
 
 u32 gTriangleCount = 0; // Some sort of counter
@@ -299,13 +312,16 @@ signed int Init_E02340()
 
 s32 CC gbh_Init(int a1)
 {
+    /*
     int result = Init_E02340();
     if (!result)
     {
         gbh_SetColourDepth();
         result = 0;
     }
-    return result;
+   // return result;
+   */
+    return gFuncs.pgbh_Init(a1);
 }
 
 static SVideoFunctions gVideoDriverFuncs;
@@ -323,13 +339,15 @@ static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
 }
 
 
-S3DFunctions gFuncs;
-
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
-    HMODULE hOld = LoadLibrary(L"_d3ddll.dll");
+    HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
     PopulateS3DFunctions(hOld, gFuncs);
 
+   
+    return gFuncs.pgbh_InitDLL(pVideoDriver);
+
+    /*
     gpVideoDriver_E13DC8 = pVideoDriver;
 
     PopulateSVideoFunctions(pVideoDriver->field_7C_self_dll_handle, gVideoDriverFuncs);
@@ -338,8 +356,8 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
     pVideoDriver->field_84_from_initDLL->pVid_GetSurface = gVideoDriverFuncs.pVid_GetSurface;
     pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = gVideoDriverFuncs.pVid_FreeSurface;
     pVideoDriver->field_84_from_initDLL->pVid_SetMode = gbh_SetMode_E04D80;
-
-    return 1;
+    */
+    //return 1;
 }
 
 struct SImageTableEntry
@@ -354,6 +372,7 @@ static DWORD gpImageTableCount_dword_E13898 = 0;
 
 signed int CC gbh_InitImageTable(int tableSize)
 {
+    /*
     gpImageTable_dword_E13894 = reinterpret_cast<SImageTableEntry*>(malloc(sizeof(SImageTableEntry) * tableSize));
     if (!gpImageTable_dword_E13894)
     {
@@ -361,11 +380,18 @@ signed int CC gbh_InitImageTable(int tableSize)
     }
     memset(gpImageTable_dword_E13894, 0, sizeof(SImageTableEntry) * tableSize);
     gpImageTableCount_dword_E13898 = tableSize;
-    return 0;
+    */
+
+    return gFuncs.pgbh_InitImageTable(tableSize);
+
+    //return 0;
 }
 
 signed int CC gbh_LoadImage(SImage* pToLoad)
 {
+
+    return gFuncs.pgbh_LoadImage(pToLoad);
+    /*
     DWORD freeImageIndex = 0;
     if (gpImageTableCount_dword_E13898 > 0)
     {
@@ -413,18 +439,19 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
     else
     {
         return -1;
-    }
+    }*/
 }
 
 int CC gbh_LockTexture(STexture* pTexture)
 {
-    __debugbreak();
-    return 0;
+    //__debugbreak();
+    //return 0;
+    return gFuncs.pgbh_LockTexture(pTexture);
 }
 
 void CC gbh_Plot(int a1, int a2, int a3, int a4)
 {
-    __debugbreak();
+    //__debugbreak();
 }
 
 int CC gbh_PrintBitmap(int a1, int a2)
@@ -437,13 +464,16 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
 {
     // TODO
     //__debugbreak();
-    return 1;
+    //return 1;
+
+    return gFuncs.pgbh_RegisterPalette(paltId, pData);
 }
 
 static u32 gTextureId = 0;
 
 STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int a4, char a5)
 {
+    /*
     STexture* pTexture = reinterpret_cast<STexture*>(malloc(sizeof(STexture)));
     if (pTexture)
     {
@@ -460,12 +490,15 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
         pTexture->field_14_data = pData;
         //pTexture->field_18_pPlat = palt[a4];
     }
-    return pTexture;
+    //return pTexture;
+    */
+    return gFuncs.pgbh_RegisterTexture(width, height, pData, a4, a5);
 }
 
 void CC gbh_ResetLights()
 {
-    __debugbreak();
+   // __debugbreak();
+    gFuncs.pgbh_ResetLights();
 }
 
 void CC gbh_SetAmbient(float a1)
@@ -475,25 +508,29 @@ void CC gbh_SetAmbient(float a1)
 
 int CC gbh_SetCamera(int a1, int a2, int a3, int a4)
 {
-    __debugbreak();
-    return 0;
+   // __debugbreak();
+   // return 0;
+    return gFuncs.pgbh_SetCamera(a1, a2, a3, a4);
 }
 
 int CC gbh_SetColourDepth()
 {
     // TODO
     //__debugbreak();
-    return 1;
+   // return 1;
+    return gFuncs.pgbh_SetColourDepth();
 }
 
 s32 CC gbh_SetWindow(int a1, int a2, int a3, int a4)
 {
     //__debugbreak();
-    return a4;
+    //return a4;
+    return gFuncs.pgbh_SetWindow(a1, a2, a3, a4);
 }
 
 int CC gbh_UnlockTexture(STexture* pTexture)
 {
-    __debugbreak();
-    return 0;
+   // __debugbreak();
+    //return 0;
+    return gFuncs.pgbh_UnlockTexture(pTexture);
 }

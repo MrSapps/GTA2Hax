@@ -32,7 +32,7 @@ static_assert(sizeof(STexture) == 0x20, "Wrong sized STexture");
 void CC ConvertColourBank(s32 unknown);
 int CC DrawLine(int a1, int a2, int a3, int a4, int a5);
 void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5);
-int CC MakeScreenTable(int* result, int a2, unsigned int a3, int a4);
+int CC MakeScreenTable(int* result, int a2, unsigned int a3);
 int CC gbh_AddLight(int a1);
 char CC gbh_AssignPalette(int a1, int a2);
 void CC gbh_BeginLevel();

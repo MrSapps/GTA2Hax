@@ -1265,6 +1265,10 @@ s32 CC Vid_InitDLL(HINSTANCE hInstance, SVideoFunctions* a2)
 
     gHinstance = hInstance;
     dword_100FFF8 = a2;
+
+    // hack/test
+    WinMain(hInstance, 0, 0, SW_SHOW);
+
     return 0;
 }
 

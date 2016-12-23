@@ -143,7 +143,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         return 0;
     }
 
-    hWnd = CreateWindowExA(0, "WinMain", "GTA2", 0xCF0000u, 0, 0, 100, 100, 0, 0, hInstance, 0);
+    hWnd = CreateWindowExA(0, "WinMain", "GTA2", WS_OVERLAPPEDWINDOW, 0, 0, 100, 100, 0, 0, hInstance, 0);
     if (!hWnd)
     {
         return 0;

@@ -94,7 +94,7 @@
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>del " "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
+      <Command>del "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
 copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
 </Command>
     </PostBuildEvent>
@@ -112,7 +112,7 @@ copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>del " "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
+      <Command>del "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
 copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
 </Command>
     </PostBuildEvent>
@@ -134,7 +134,7 @@ copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>del " "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
+      <Command>del "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
 copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
 </Command>
     </PostBuildEvent>
@@ -156,7 +156,7 @@ copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>del " "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
+      <Command>del "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
 copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
 </Command>
     </PostBuildEvent>

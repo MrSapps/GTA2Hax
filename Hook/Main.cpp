@@ -4,6 +4,8 @@
 #include <Objbase.h>
 #include <type_traits>
 
+#include "imgui_impl_gta2.h"
+
 #define FUNC_PTR(x, addr) using T##x = decltype(&x); T##x p##x = (T##x)addr;
 
 LRESULT __stdcall WndProc_4D0A00(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
@@ -176,7 +178,10 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     WNDCLASSA WndClass = {};
     WndClass.style = CS_VREDRAW | CS_HREDRAW;
+
+    // TODO: Hook to ImGui_Imp_GTA2_WndProcHandler()
     WndClass.lpfnWndProc = pWndProc_4D0A00;
+
     WndClass.hInstance = hInstance;
     WndClass.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(0x65));
     WndClass.hCursor = LoadCursorA(0, MAKEINTRESOURCEA(IDI_APPLICATION));
@@ -242,6 +247,8 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     pgbh_Init_4CAEA0();
     pKeyBoardPlaySoundInit_461880();
 
+    ImGui_Impl_GTA2_Init(hWnd, 0);
+
     // TODO: Other calls, video playing related etc
 
     MSG msg = {};
@@ -285,7 +292,15 @@ restart_loop:
                         break;
                     }
 
+                    ImGui_Imp_GTA2_NewFrame();
+
+                    /* Not yet implemented
+                    ImGui::Text("Hello, world!");
+                    ImGui::Render();
+                    */
+
                     auto frontEndRet = psub_45A320(g_menu_q_dword_5EB160, 0); // Runs front end logic and renders it?
+
                     if (frontEndRet == 1)
                     {
                         bQuit = 1;
@@ -399,6 +414,8 @@ restart_loop:
     
 
     CoUninitialize();
+
+    ImGui_Impl_GTA2_Shutdown();
 
     return 0;
 }

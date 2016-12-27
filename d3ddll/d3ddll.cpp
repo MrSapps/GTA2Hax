@@ -104,10 +104,31 @@ int CC gbh_DrawFlatRect(int a1, int a2)
     return 0;
 }
 
-void CC gbh_DrawQuad(int a1, int a2, int a3, int a4)
+
+
+STexture* pLast = nullptr;
+
+void CC gbh_DrawQuad(int flags, STexture* pTexture, SPrim* pData, int alpha)
 {
-    //__debugbreak();
-   // return gFuncs.pgbh_DrawQuad(a1, a2, a3, a4);
+    // 0x10000 = rotation or scale related? 
+    // 0x20000 =
+    // 0x300 = semi trans/some other blending mode?
+    // 0x8000 lighting? or shadow
+    // 0x2000 = semi trans or use alpha?
+    if (pTexture)
+    {
+        pLast = pTexture;
+    }
+
+    if (!pTexture)
+    {
+        pTexture = pLast;
+    }
+
+   // flags = 0;
+
+
+    return gFuncs.pgbh_DrawQuad(flags, pTexture, pData, alpha);
 }
 
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
@@ -167,10 +188,11 @@ u32* CC gbh_GetGlobals()
     return &gTriangleCount;
 }
 
+// Only called with do_mike / profiling debugging opt enabled
 int CC gbh_GetUsedCache(int a1)
 {
-    __debugbreak();
-    return 0;
+   // __debugbreak();
+    return 999;
 }
 
 static SVideo* gpVideoDriver_E13DC8 = nullptr;
@@ -395,11 +417,13 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
     HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
     PopulateS3DFunctions(hOld, gFuncs);
 
+    /*
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))((DWORD)hOld + 0x01840);
     DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
     DetourTransactionCommit();
+    */
 
     auto ret = gFuncs.pgbh_InitDLL(pVideoDriver);
 
@@ -558,13 +582,15 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
 
 void CC gbh_ResetLights()
 {
-   // __debugbreak();
+   // __debugbreak();		a4	0	int
+
     gFuncs.pgbh_ResetLights();
 }
 
 void CC gbh_SetAmbient(float a1)
 {
 //    __debugbreak();
+    gFuncs.pgbh_SetAmbient(a1);
 }
 
 int CC gbh_SetCamera(int a1, int a2, int a3, int a4)

@@ -30,6 +30,20 @@ struct STexture
 };
 static_assert(sizeof(STexture) == 0x20, "Wrong sized STexture");
 
+struct SVertex
+{
+    float x;
+    float y;
+    float u;
+    float v;
+};
+
+
+struct SPrim
+{
+    SVertex mData[8];
+};
+
 void CC ConvertColourBank(s32 unknown);
 int CC DrawLine(int a1, int a2, int a3, int a4, int a5);
 void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5);
@@ -45,7 +59,7 @@ void CC gbh_CloseScreen(SVideo* pVideo);
 unsigned int CC gbh_Convert16BitGraphic(int a1, unsigned int a2, WORD *a3, signed int a4);
 unsigned int CC gbh_ConvertColour(unsigned __int8 a1, unsigned __int8 a2, unsigned __int8 a3);
 int CC gbh_DrawFlatRect(int a1, int a2);
-void CC gbh_DrawQuad(int a1, int a2, int a3, int a4);
+void CC gbh_DrawQuad(int a1, STexture* pTexture, SPrim* a3, int a4);
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5);
 s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4);
 void CC gbh_DrawTriangle(int a1, int a2, int a3, int a4);
@@ -60,6 +74,8 @@ s32 CC gbh_Init(int a1);
 u32 CC gbh_InitDLL(SVideo* pVideoDriver);
 signed int CC gbh_InitImageTable(int tableSize);
 
+#pragma pack(push)
+#pragma pack(1)
 struct SImage
 {
     BYTE field_0;
@@ -68,14 +84,15 @@ struct SImage
     BYTE field_3;
     DWORD field_4;
     DWORD field_8;
-    WORD field_C;
-    BYTE field_E;
+    WORD field_C_w;
+    BYTE field_E_h;
     BYTE field_F;
     BYTE field_10;
     BYTE field_11;
-    WORD field_12;
+    BYTE* field_12;
 };
-static_assert(sizeof(SImage) == 0x14, "Wrong sized SImage");
+#pragma pack(pop)
+static_assert(sizeof(SImage) == 0x16, "Wrong sized SImage");
 
 signed int CC gbh_LoadImage(SImage* pImage);
 int CC gbh_LockTexture(STexture* pTexture);

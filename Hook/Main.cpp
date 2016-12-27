@@ -3,8 +3,9 @@
 #include <windows.h>
 #include <Objbase.h>
 #include <type_traits>
-
 #include "imgui_impl_gta2.h"
+#include "d3ddll.hpp"
+#include "detours.h"
 
 #define FUNC_PTR(x, addr) using T##x = decltype(&x); T##x p##x = (T##x)addr;
 
@@ -143,6 +144,56 @@ int GetGameState_4D09C0(SGame* thisPtr)
     return thisPtr->field_2C;
 }
 
+// do_mike debug must be on for this to get called
+int __fastcall sub_474530(void* thisPtr, void* hack);
+decltype(&sub_474530) psub_474530 = (decltype(&sub_474530))0x474530;
+
+S3DFunctions api;
+int __fastcall sub_474530(void* thisPtr, void* hack)
+{
+    const float kU = 14;
+
+    // Top left
+    SPrim d = {};
+    d.mData[0].x = 0;
+    d.mData[0].y = 0;
+    d.mData[0].u = kU;
+
+    // Top right
+    d.mData[2].x = 900;
+    d.mData[2].y = 0;
+    d.mData[2].u = kU;
+
+    d.mData[3].u = kU;
+
+    // Bottom right
+    d.mData[4].x = 900;
+    d.mData[4].y = 400;
+    d.mData[4].u = kU;
+
+    d.mData[5].u = kU;
+    d.mData[5].v = 14;
+
+    // Bottom left
+    d.mData[6].x = 0;
+    d.mData[6].y = 400;
+    d.mData[6].u = kU;
+
+    d.mData[7].v = 14;
+
+    api.pgbh_DrawQuad(0, 0, &d, 128);
+
+    return 0;
+}
+
+void AddHooks()
+{
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DetourAttach((PVOID*)(&psub_474530), (PVOID)sub_474530);
+    DetourTransactionCommit();
+}
+
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
     ghInstance = hInstance;
@@ -245,8 +296,15 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     UpdateWindow(hWnd);
 
     pgbh_Init_4CAEA0();
+
+    // EXTRA
+    PopulateS3DFunctions(GetModuleHandle(L"D3DDll.dll"), api);
+
+    // END EXTRA
+
     pKeyBoardPlaySoundInit_461880();
 
+    // EXTRA
     ImGui_Impl_GTA2_Init(hWnd, 0);
 
     // TODO: Other calls, video playing related etc
@@ -292,15 +350,20 @@ restart_loop:
                         break;
                     }
 
+                    // EXTRA
                     ImGui_Imp_GTA2_NewFrame();
 
                     /* Not yet implemented
                     ImGui::Text("Hello, world!");
                     ImGui::Render();
+                    
                     */
 
-                    auto frontEndRet = psub_45A320(g_menu_q_dword_5EB160, 0); // Runs front end logic and renders it?
 
+
+                    auto frontEndRet =  psub_45A320(g_menu_q_dword_5EB160, 0); // Runs front end logic and renders it?
+                 
+                
                     if (frontEndRet == 1)
                     {
                         bQuit = 1;
@@ -412,10 +475,11 @@ restart_loop:
         goto after_front_end;
     }
     
+    // EXTRA
+    ImGui_Impl_GTA2_Shutdown();
 
     CoUninitialize();
 
-    ImGui_Impl_GTA2_Shutdown();
 
     return 0;
 }
@@ -423,6 +487,7 @@ restart_loop:
 int CALLBACK WinMainWrapper(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
     // Don't return to "real" WinMain otherwise it will run again
+    AddHooks();
     const int ret = WinMain(hInstance, hPrevInstance, lpCmdLine, nShowCmd);
     exit(ret);
 }

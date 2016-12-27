@@ -4,6 +4,7 @@
 #include <d3d.h>
 #include <vector>
 
+
 #pragma comment(lib, "dxguid.lib")
 
 static S3DFunctions gFuncs;
@@ -106,7 +107,7 @@ int CC gbh_DrawFlatRect(int a1, int a2)
 void CC gbh_DrawQuad(int a1, int a2, int a3, int a4)
 {
     //__debugbreak();
-    return gFuncs.pgbh_DrawQuad(a1, a2, a3, a4);
+   // return gFuncs.pgbh_DrawQuad(a1, a2, a3, a4);
 }
 
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
@@ -174,14 +175,37 @@ int CC gbh_GetUsedCache(int a1)
 
 static SVideo* gpVideoDriver_E13DC8 = nullptr;
 
+struct S3DDevice
+{
+    DWORD field_0_id;
+    char* field_4_device_name;
+    char* field_8_device_description;
+    DWORD field_C;
+    DWORD field_10;
+    DWORD field_14;
+    DWORD field_18_p0x60_byte_struct;
+    DWORD field_1C;
+    DWORD field_20_flags;
+    D3DDEVICEDESC field_24_deviceDesc;
+    DWORD field_120_context;
+    D3DDEVICEDESC field_124;
+    GUID field_220;
+    DWORD field_230_next_ptr;
+    DWORD field_234_backing_buffer;
+    DWORD field_238;
+};
+
+static_assert(sizeof(D3DDEVICEDESC) == 0xfc, "Wrong size D3DDEVICEDESC");
+static_assert(sizeof(S3DDevice) == 0x23C, "Wrong size S3DDevice");
+
 struct SD3dStruct
 {
     SVideo* field_0_pVideoDriver;
-    void* field_4_pnext_device;
+    S3DDevice* field_4_pnext_device;
     void* field_8_pfirst_device;
     void* field_C_device_info_ptr;
     void* field_10;
-    void* field_14_parray;
+    S3DDevice* field_14_parray;
     DWORD field_18_current_id;
     DWORD field_1C;
     DWORD field_20;
@@ -208,6 +232,32 @@ static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(GUID FAR* lpGuid, LPSTR lpDe
 {
     return 1;
 }
+
+#include "detours.h"
+
+signed int __stdcall CreateD3DDevice_E01840(SD3dStruct* pRenderer)
+{
+    HRESULT hr = pRenderer->field_24_pID3d->CreateDevice(
+        pRenderer->field_14_parray->field_220,
+        pRenderer->field_0_pVideoDriver->field_138_Surface,               // dd surface ptr
+        &pRenderer->field_28_ID3D_Device,
+        nullptr);
+
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+
+    hr = pRenderer->field_24_pID3d->CreateViewport(&pRenderer->field_2C_IViewPort, nullptr);
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))0x01840;
 
 SD3dStruct* D3DCreate_E01300(SVideo* pVideoDriver)
 {
@@ -294,14 +344,14 @@ signed int __stdcall Set3dDevice_E01B90(SD3dStruct* pContext, int id)
     return 0; // result
 }
 
-SD3dStruct* gD3dPtr_dword_E485E0;
+SD3dStruct** gD3dPtr_dword_21C85E0 = (SD3dStruct**)0x21C85E0;
 
 signed int Init_E02340()
 {
     // TODO
 
     SD3dStruct* pD3d = D3DCreate_E01300(gpVideoDriver_E13DC8);
-    gD3dPtr_dword_E485E0 = pD3d;
+   // gD3dPtr_dword_E485E0 = pD3d;
    // if (Set3dDevice_E01B90(pD3d, 2) != 1)
     {
       //  __debugbreak();
@@ -321,16 +371,17 @@ s32 CC gbh_Init(int a1)
     }
    // return result;
    */
-    return gFuncs.pgbh_Init(a1);
+    auto ret = gFuncs.pgbh_Init(a1);
+    return ret;
 }
 
-static SVideoFunctions gVideoDriverFuncs;
+static SPtrVideoFunctions gVideoDriverFuncs;
 
 static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
 {
     pVideoDriver->field_34_active_device_id = 0;
 
-    int result = gVideoDriverFuncs.pVid_SetMode(pVideoDriver, hwnd, modeId);
+    int result = (*gVideoDriverFuncs.pVid_SetMode)(pVideoDriver, hwnd, modeId);
     if (!result)
     {
         result = Init_E02340();
@@ -344,20 +395,30 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
     HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
     PopulateS3DFunctions(hOld, gFuncs);
 
-   
-    return gFuncs.pgbh_InitDLL(pVideoDriver);
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))((DWORD)hOld + 0x01840);
+    DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
+    DetourTransactionCommit();
 
-    /*
+    auto ret = gFuncs.pgbh_InitDLL(pVideoDriver);
+
+
     gpVideoDriver_E13DC8 = pVideoDriver;
-
     PopulateSVideoFunctions(pVideoDriver->field_7C_self_dll_handle, gVideoDriverFuncs);
-
-    pVideoDriver->field_84_from_initDLL->pVid_CloseScreen = gbh_CloseScreen;
-    pVideoDriver->field_84_from_initDLL->pVid_GetSurface = gVideoDriverFuncs.pVid_GetSurface;
-    pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = gVideoDriverFuncs.pVid_FreeSurface;
-    pVideoDriver->field_84_from_initDLL->pVid_SetMode = gbh_SetMode_E04D80;
+    
+    /*
+    *pVideoDriver->field_84_from_initDLL->pVid_CloseScreen = gbh_CloseScreen;
+    *pVideoDriver->field_84_from_initDLL->pVid_GetSurface = *gVideoDriverFuncs.pVid_GetSurface;
+    *pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = *gVideoDriverFuncs.pVid_FreeSurface;
+    *pVideoDriver->field_84_from_initDLL->pVid_SetMode = gbh_SetMode_E04D80;
     */
+
+
+
     //return 1;
+
+    return ret;
 }
 
 struct SImageTableEntry

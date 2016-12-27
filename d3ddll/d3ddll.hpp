@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include "../DmaVideo/DmaVideo.hpp"
 
 using u16 = unsigned short int;
@@ -92,6 +93,7 @@ int CC gbh_UnlockTexture(STexture* pTexture);
 
 struct S3DFunctions
 {
+    // TODO: Should probably also be pointers to function pointers
     decltype(&ConvertColourBank) pConvertColourBank;
     decltype(&DrawLine) pDrawLine;
     decltype(&SetShadeTableA) pSetShadeTableA;

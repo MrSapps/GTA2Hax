@@ -5,8 +5,13 @@
 #pragma comment(lib, "ddraw.lib")
 #pragma comment(lib, "dxguid.lib")
 
+#define BYTEn(x, n)   (*((BYTE*)&(x)+n))
+#define BYTE1(x)   BYTEn(x,  1)
+
 static HINSTANCE gHinstance;
-static SVideoFunctions* dword_100FFF8; // TODO: Reverse me
+static SPtrVideoFunctions* dword_100FFF8; // TODO: Reverse me
+
+static SVideoFunctions gRealFuncs;
 
 using TDirectDrawEnumerateEx = decltype(&DirectDrawEnumerateExA);
 
@@ -76,9 +81,17 @@ BOOL WINAPI DirectDrawEnumerateExCallBack(
     return DirectDrawEnumerateCallBack(lpGUID, lpDriverDescription, lpDriverName, lpContext);
 }
 
-SDevice* Init_DisplayMode_1001010(SDisplayMode* pDisplayMode, DDSURFACEDESC2* ddsurface, SVideo* pVideoDriver)
+SDevice*  __stdcall Init_DisplayMode_1001010(SDisplayMode* pDisplayMode, DDSURFACEDESC2* ddsurface, SVideo* pVideoDriver);
+
+decltype(&Init_DisplayMode_1001010) pInit_DisplayMode_1001010 = nullptr;
+
+// TODO: This function is wrong as some stuff isn't set correctly in pDisplayMode, still seems to work however!
+SDevice*  __stdcall Init_DisplayMode_1001010(SDisplayMode* pDisplayMode, DDSURFACEDESC2* ddsurface, SVideo* pVideoDriver)
 {
     TRACE_ENTRYEXIT;
+
+    //return pInit_DisplayMode_1001010(pDisplayMode, ddsurface, pVideoDriver);
+    
 
     pDisplayMode->field_8_width = ddsurface->dwWidth;
     pDisplayMode->field_C_height = ddsurface->dwHeight;
@@ -188,6 +201,9 @@ static void FreeDDrawInstances(SVideo* pVideoDriver)
 SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
 {
     TRACE_ENTRYEXIT;
+
+    //SVideo* ret = gRealFuncs.pVid_Init_SYS(param1, param2_flags);
+    //return ret;
 
     HMODULE hDirectDraw = ::LoadLibraryA("ddraw.dll");
     if (hDirectDraw)
@@ -351,6 +367,7 @@ SDevice* CC Vid_FindDevice(SVideo* pVideoDriver, s32 deviceId)
 {
     TRACE_ENTRYEXIT;
 
+
     SDevice* result = pVideoDriver->field_2C_device_info_head_ptr;
     if (pVideoDriver && result)
     {
@@ -365,6 +382,7 @@ SDevice* CC Vid_FindDevice(SVideo* pVideoDriver, s32 deviceId)
         return result;
     }
     return nullptr;
+
 }
 
 SDisplayMode* CC Vid_FindMode(SVideo* pVideoDriver, s32 modeId)
@@ -629,12 +647,14 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
 {
     TRACE_ENTRYEXIT;
 
+    //return gRealFuncs.pVid_SetMode(pVideoDriver, hWnd, modeId);
+
     if (!pVideoDriver)
     {
         return 1;
     }
 
-    const bool bNotFullScreen = modeId != -2;
+    const int bNotFullScreen = modeId != -2;
     UpdateWindow(hWnd);
     pVideoDriver->field_4C0_hwnd = hWnd;
 
@@ -753,7 +773,11 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
         if (pVideoDriver->field_4_flags & FLAG_HARDWARE_RENDERING)
         {
             pVideoDriver->field_4_flags |= 0x20000000;
-            pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps &= (0xF7 | 0x60); // TODO: Only change 1st byte here
+
+            DWORD byte1Flags = pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps;
+            BYTE1(byte1Flags) = BYTE1(byte1Flags) & 0xF7 | 0x60;
+
+            pVideoDriver->field_13C_DDSurfaceDesc7.ddsCaps.dwCaps = byte1Flags;
         }
 
         if (!pVideoDriver->field_120_IDDraw4->CreateSurface(&pVideoDriver->field_13C_DDSurfaceDesc7, &pVideoDriver->field_138_Surface, 0))
@@ -766,6 +790,7 @@ s32 CC Vid_SetMode(SVideo* pVideoDriver, HWND hWnd, s32 modeId)
             SDisplayMode displayMode = {};
             displayMode.field_0_display_mode_idx = -2;
             displayMode.field_3C = 1;
+
             Init_DisplayMode_1001010(&displayMode, &ddsurface, pVideoDriver);
 
             pVideoDriver->field_40_full_screen = modeId;
@@ -995,6 +1020,7 @@ void CC Vid_GrabSurface(SVideo* pVideoDriver)
             pVideoDriver->field_4_flags |= 1;
         }
     }
+
 }
 
 void CC Vid_ReleaseSurface(SVideo* pVideoDriver)
@@ -1064,8 +1090,15 @@ void CC Vid_FlipBuffers(SVideo* pVideo)
             r.bottom = pVideo->field_4C_rect_bottom;
             r.right = pVideo->field_48_rect_right;
 
+            // Can't use GetWindowRect as it includes the window borders
+            RECT r2 = {};
+            GetClientRect(pVideo->field_4C0_hwnd, &r2);
+            
+            ClientToScreen(pVideo->field_4C0_hwnd, (LPPOINT)&r2.left);
+            ClientToScreen(pVideo->field_4C0_hwnd, (LPPOINT)&r2.right);
+
             pVideo->field_134_SurfacePrimary->Blt(
-                NULL,
+                &r2,
                 pVideo->field_138_Surface, // Source
                 &r,                        // Source rect size
                 DDBLT_WAIT,
@@ -1078,7 +1111,7 @@ void CC Vid_FlipBuffers(SVideo* pVideo)
 void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
 {
     TRACE_ENTRYEXIT;
-
+    
     if (pVideoDriver)
     {
         if (pVideoDriver->field_40_full_screen)
@@ -1128,11 +1161,13 @@ void CC Vid_ShutDown_SYS(SVideo* pVideoDriver)
         }
         free(pVideoDriver);
     }
+    //return gRealFuncs.pVid_ShutDown_SYS(pVideoDriver);
 }
 
 s32 CC Vid_EnableWrites(SVideo* pVideoDriver)
 {
     TRACE_ENTRYEXIT;
+
 
     if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && !(pVideoDriver->field_4_flags & 2))
     {
@@ -1155,7 +1190,7 @@ s32 CC Vid_EnableWrites(SVideo* pVideoDriver)
 s32 CC Vid_DisableWrites(SVideo* pVideoDriver)
 {
     TRACE_ENTRYEXIT;
-
+    
     if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && pVideoDriver->field_4_flags & 2)
     {
         pVideoDriver->field_50_surface_pixels_ptr = 0;
@@ -1207,6 +1242,7 @@ s32 CC Vid_GetSurface(SVideo* pVideoDriver)
     }
 
     return 1;
+
 }
 
 s32 CC Vid_FreeSurface(SVideo* pVideoDriver)
@@ -1259,17 +1295,25 @@ s32 CC Vid_WindowProc(SVideo* pVideoDriver, HWND hwnd, DWORD uMsg, WPARAM wParam
     return 0;
 }
 
-s32 CC Vid_InitDLL(HINSTANCE hInstance, SVideoFunctions* a2)
+
+s32 CC Vid_InitDLL(HINSTANCE hInstance, SPtrVideoFunctions* a2)
 {
     TRACE_ENTRYEXIT;
+
+    HMODULE hReal = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_Dmavideo.dll");
+
+    DWORD addr = (DWORD)hReal + 0x1010;
+    pInit_DisplayMode_1001010 = (decltype(&Init_DisplayMode_1001010))addr;
+
+
+    PopulateSVideoFunctions(hReal, gRealFuncs);
 
     gHinstance = hInstance;
     dword_100FFF8 = a2;
 
-    // hack/test
-    WinMain(hInstance, 0, 0, SW_SHOW);
+    //return 0;
 
-    return 0;
+    return gRealFuncs.pVid_InitDLL(hInstance, a2);
 }
 
 static SVidVersion gVersionInfo =

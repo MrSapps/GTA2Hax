@@ -45,8 +45,8 @@ FUNC_PTR(gbh_Init_4CAEA0, 0x4CAEA0);
 char KeyBoardPlaySoundInit_461880();
 FUNC_PTR(KeyBoardPlaySoundInit_461880, 0x461880);
 
-int sub_457830();
-FUNC_PTR(sub_457830, 0x457830);
+int SMenu_ctor_457830();
+FUNC_PTR(SMenu_ctor_457830, 0x457830);
 
 char __fastcall FrontEndQ_4587B0(void* thisPtr, void* hack, unsigned __int16 a2); // thiscall
 FUNC_PTR(FrontEndQ_4587B0, 0x4587B0);
@@ -57,11 +57,17 @@ FUNC_PTR(sub_45A320, 0x45A320);
 bool GetCurrentWindowXY_4CC580();
 FUNC_PTR(GetCurrentWindowXY_4CC580, 0x4CC580);
 
-int sub_4CC6A0(DWORD, DWORD);
+int sub_4CC6A0(DWORD, struct SGame*);
 FUNC_PTR(sub_4CC6A0, 0x4CC6A0);
 
 char GameOrRenderLoop_462A30();
 FUNC_PTR(GameOrRenderLoop_462A30, 0x462A30);
+
+int DeInits_459760();
+FUNC_PTR(DeInits_459760, 0x459760);
+
+DWORD sub_461DE0();
+FUNC_PTR(sub_461DE0, 0x461DE0);
 
 #define VAR(TypeName, VarName, Addr) TypeName& VarName = *reinterpret_cast<TypeName*>(Addr);
 #define PTR(TypeName, VarName, Addr) std::remove_pointer<TypeName>::type* const VarName = reinterpret_cast<TypeName>(Addr);
@@ -81,10 +87,58 @@ VAR(HINSTANCE, ghInstance, 0x673E28);
 VAR(BYTE*, g_menu_q_dword_5EB160, 0x5EB160);
 VAR(BYTE, byte_673F50, 0x673F50);
 VAR(BYTE, byte_6735A5, 0x6735A5);
+PTR(struct SGame*, sgame_5EB4FC, 0x5EB4FC);
+VAR(BYTE, byte_662786, 0x662786);
+VAR(DWORD, dword_673E2C, 0x673E2C);
+
+struct SGame1
+{
+    void* field_0_p0x85C_struct;
+    DWORD field_4;
+    DWORD field_8;
+    DWORD field_C;
+    DWORD field_10;
+    DWORD field_14;
+};
+static_assert(sizeof(SGame1) == 0x18, "Wrong size SGame1");
+
+
+struct SGame
+{
+    DWORD field_0;
+    SGame1 field_4;
+    DWORD field_1C;
+    BYTE field_20;
+    BYTE field_21;
+    BYTE field_22;
+    BYTE field_23_count;
+    BYTE field_24;
+    BYTE field_25;
+    BYTE field_26;
+    BYTE field_27;
+    DWORD field_28;
+    DWORD field_2C;
+    BYTE field_30;
+    BYTE field_31;
+    BYTE field_32;
+    BYTE field_33;
+    DWORD field_34;
+    DWORD field_38;
+    BYTE field_3C_debug_skip_police_5EAD5E;
+    BYTE field_3D;
+    BYTE field_3E;
+    BYTE field_3F;
+};
+static_assert(sizeof(SGame) == 0x40, "Wrong size SGame");
 
 int __stdcall ErrorMessageBox_4D0900(LPCSTR lpText)
 {
     return MessageBoxA(hWnd, lpText, "Error!", MB_OK);
+}
+
+int GetGameState_4D09C0(SGame* thisPtr)
+{
+    return thisPtr->field_2C;
 }
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
@@ -95,7 +149,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     {
         return 0;
     }
-    
+
     if (OpenMutexA(MUTEX_ALL_ACCESS, 0, "GBH_COOP_MUTEX"))
     {
         return 0;
@@ -104,7 +158,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ghMutex = CreateMutexA(0, 0, "GBH_COOP_MUTEX");
     pGetGameVersion_4D0920(&gGameMajorVersion_673F54, &gGameMinorVersion_673F58);
 
-  
+
     DWORD osVersion = 0;
     DWORD ddVersion = 0;
     pGetDDAndOSVersion_4031C0(&osVersion, &ddVersion);
@@ -115,7 +169,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         CloseHandle(ghMutex);
         return -1;
     }
-    
+
     pReadDebugSettings_451930();
     pSetDebugBootMapEtc_45E8D0(byte_5EC070, 0); // If skipping front end then reads the map/style to boot into etc
     gbDontSkipFrontEnd_595018 = debug_skip_frontend_5EAD7C == 0;
@@ -132,7 +186,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     pReadGraphicsSettings_4CB3F0();
     pjGetCurrentDirectory_4D8447(gGameDirectory_673D28, 256);
-    
+
     // TODO
     //ParseCommandLineArgs_461810(thisPtr, lpCommandLine);
 
@@ -190,7 +244,10 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     // TODO: Other calls, video playing related etc
 
+    MSG msg = {};
+    int v12 = 0;
     bool bQuit = false;
+restart_loop:
     while (1)
     {
         bQuit = false;
@@ -198,12 +255,11 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         {
             break;
         }
-
-        psub_457830();
-        pFrontEndQ_4587B0(g_menu_q_dword_5EB160, 0, 0 /*v12*/);
-    //LABEL_26:
+        pSMenu_ctor_457830();
+        pFrontEndQ_4587B0(g_menu_q_dword_5EB160, 0, v12);
+    after_front_end:
         pGetCurrentWindowXY_4CC580();
-        psub_4CC6A0(/*v12*/ 0, windowWidth); // Inits more settings
+        psub_4CC6A0(v12, sgame_5EB4FC);
         while (1)
         {
             do
@@ -212,16 +268,15 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
                 {
                     do
                     {
-                        MSG Msg = {};
-                        while (PeekMessageA(&Msg, 0, 0, 0, PM_REMOVE))
+                        while (PeekMessageA(&msg, 0, 0, 0, 1u))
                         {
-                            if (Msg.message == WM_QUIT)
+                            if (msg.message == WM_QUIT)
                             {
-                                //sub_44BA40(); // TODO
-                                return Msg.wParam;
+                                //sub_44BA40();
+                                return msg.wParam;
                             }
-                            TranslateMessage(&Msg);
-                            DispatchMessageA(&Msg);
+                            TranslateMessage(&msg);
+                            DispatchMessageA(&msg);
                         }
                     } while (bQuit || byte_673F50 == 2 || byte_6735A5);
 
@@ -230,13 +285,118 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
                         break;
                     }
 
-                    // Seems to run logic loop and rendering of the front end
-                    auto frontEndRet = psub_45A320(g_menu_q_dword_5EB160, 0);
+                    auto frontEndRet = psub_45A320(g_menu_q_dword_5EB160, 0); // Runs front end logic and renders it?
+                    if (frontEndRet == 1)
+                    {
+                        bQuit = 1;
+                        pDeInits_459760();
+                        DestroyWindow(hWnd);
+                    }
+                    else
+                    {
+                        if (frontEndRet == 3)
+                        {
+                            pDeInits_459760();
+                            gbDontSkipFrontEnd_595018 = 0;
+                            goto restart_loop;
+                        }
+                        if (frontEndRet == 4)
+                        {
+                            pDeInits_459760();
+                            gbDontSkipFrontEnd_595018 = 0;
+                            byte_662786 = 1;
+                            goto restart_loop;
+                        }
+                    }
                 }
                 bQuit = pGameOrRenderLoop_462A30();
             } while (!bQuit);
+            if (!dword_673E2C)
+            {
+                //Returns1();
+                return 1;
+            }
+
+            if (!debug_skip_frontend_5EAD7C)
+            {
+                break;
+            }
+
+            DestroyWindow(hWnd);
+        }
+        if (dword_673E2C)
+        {
+            if (GetGameState_4D09C0(sgame_5EB4FC) == 1)
+            {
+                DestroyWindow(hWnd);
+            }
+            else
+            {
+            LABEL_47:
+                v12 = 7;
+                //sub_462060();
+                gbDontSkipFrontEnd_595018 = 1;
+            }
+        }
+        else
+        {
+            switch (GetGameState_4D09C0(sgame_5EB4FC))
+            {
+            case 5:
+                goto LABEL_47;
+            case 1:
+                DestroyWindow(hWnd);
+                break;
+            case 2:
+                /*
+                sub_45EC20(sgame_5EB4FC->field_38);
+                sub_4A8F90(klass_2BC0_66B404, sgame_5EB4FC->field_38);
+                sub_4A90A0(klass_2BC0_66B404);
+                v17 = -(sub_45E540((int)byte_5EC070) != 0);
+                LOBYTE(v17) = v17 & 0xFB;
+                v12 = v17 + 11;
+                sub_462060();
+                gbDontSkipFrontEnd_595018 = 1;
+                */
+                break;
+            case 3:
+                /*
+                sub_45EC20(sgame_5EB4FC->field_38);
+                sub_4A8F90(klass_2BC0_66B404, sgame_5EB4FC->field_38);
+                sub_4A90A0(klass_2BC0_66B404);
+                v12 = sub_45E540((int)byte_5EC070) != 0 ? 6 : 2;
+                sub_462060();
+                gbDontSkipFrontEnd_595018 = 1;
+                */
+                break;
+            case 4:
+                /*
+                sub_45EC20(sgame_5EB4FC->field_38);
+                sub_4A8F90(klass_2BC0_66B404, sgame_5EB4FC->field_38);
+                sub_4A90A0(klass_2BC0_66B404);
+                v12 = sub_45E540((int)byte_5EC070) != 0 ? 6 : 3;
+                sub_462060();
+                gbDontSkipFrontEnd_595018 = 1;
+                */
+                break;
+            case 6:
+                v12 = 0;
+                //sub_462060();
+                gbDontSkipFrontEnd_595018 = 1;
+                break;
+            default:
+                continue;
+            }
         }
     }
+
+    
+    psub_461DE0();
+    //if (!dword_673E2C || sub_40BFA0(&unk_674268))
+    {
+        goto after_front_end;
+    }
+    
 
     CoUninitialize();
 

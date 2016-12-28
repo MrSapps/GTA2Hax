@@ -151,6 +151,17 @@ decltype(&sub_474530) psub_474530 = (decltype(&sub_474530))0x474530;
 S3DFunctions api;
 int __fastcall sub_474530(void* thisPtr, void* hack)
 {
+    ImGui_Imp_GTA2_NewFrame();
+
+
+    ImGui::Begin("blargh");
+    ImGui::Button("Blah");
+    ImGui::Text("Hello, world!");
+    ImGui::End();
+
+    ImGui::Render();
+
+    /*
     const float kU = 14;
 
     // Top left
@@ -187,17 +198,19 @@ int __fastcall sub_474530(void* thisPtr, void* hack)
     d.mVerts[3].v = 25.0f;
 
     api.pgbh_DrawQuad(0, 0, &d, 255);
-    
+    */
 
     return 0;
 }
 
 void AddHooks()
 {
+    
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)(&psub_474530), (PVOID)sub_474530);
     DetourTransactionCommit();
+    
 }
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
@@ -311,7 +324,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     pKeyBoardPlaySoundInit_461880();
 
     // EXTRA
-    ImGui_Impl_GTA2_Init(hWnd, 0);
+    ImGui_Impl_GTA2_Init(hWnd, 0, api);
 
     // TODO: Other calls, video playing related etc
 
@@ -355,17 +368,6 @@ restart_loop:
                     {
                         break;
                     }
-
-                    // EXTRA
-                    ImGui_Imp_GTA2_NewFrame();
-
-                    /* Not yet implemented
-                    ImGui::Text("Hello, world!");
-                    ImGui::Render();
-                    
-                    */
-
-
 
                     auto frontEndRet =  psub_45A320(g_menu_q_dword_5EB160, 0); // Runs front end logic and renders it?
                  

@@ -3,7 +3,9 @@
 #include "imgui.h"
 #include <windows.h>
 
-IMGUI_API void ImGui_Impl_GTA2_Init(void* hwnd, void* device);
+struct S3DFunctions;
+
+IMGUI_API void ImGui_Impl_GTA2_Init(void* hwnd, void* device, S3DFunctions& api);
 IMGUI_API void ImGui_Impl_GTA2_Shutdown();
 IMGUI_API void ImGui_Imp_GTA2_NewFrame();
 

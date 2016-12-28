@@ -460,9 +460,20 @@ s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4)
     return gFuncs.pgbh_DrawTilePart(a1, a2, a3, a4);
 }
 
-void CC gbh_DrawTriangle(int a1, int a2, int a3, int a4)
+void CC gbh_DrawTriangle(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
 //    __debugbreak();
+    if (pTexture)
+    {
+        pLast = pTexture;
+    }
+
+    if (!pTexture)
+    {
+        pTexture = pLast;
+    }
+
+    gFuncs.pgbh_DrawTriangle(flags, pTexture, pVerts, baseColour);
 }
 
 void CC gbh_EndLevel()
@@ -499,16 +510,76 @@ void CC gbh_FreeTexture(STexture* pTexture)
 u32 gTriangleCount = 0; // Some sort of counter
 
 
+struct SGlobals
+{
+    DWORD mNumPolysDrawn;
+    DWORD mNumTextureSwaps;
+    DWORD mNumBatchFlushes;
+    DWORD hack[500];
+};
+
 u32* CC gbh_GetGlobals()
 {
-    return &gTriangleCount;
+  //  return &gTriangleCount;
+    auto r = gFuncs.pgbh_GetGlobals();
+
+    /*
+    SGlobals* g = (SGlobals*)r;
+    g->mNumPolysDrawn = 12345;
+    g->mNumTextureSwaps = 666;
+    g->mNumBatchFlushes = 999;
+    g->hack[0] = 88888;
+    
+    for (int i = 1; i < 500; i++)
+    {
+        g->hack[i] = 77;
+    }
+    */
+    return r;
 }
+
+struct SCache
+{
+    BYTE field_0;
+    BYTE field_1_flags;
+    BYTE field_2;
+    BYTE field_3;
+    WORD field_4;
+    WORD field_6_cache_idx;
+    DWORD field_8_used_Frame_num;
+    DWORD field_C;
+    DWORD field_10;
+    DWORD field_14;
+    DWORD field_18;
+    void* field_1C_pNext;
+    void* field_20_pTexture;
+    void* field_24_texture_id;
+    DWORD field_28;
+};
+
+struct SCaches
+{
+    SCaches* mCaches[12];
+};
 
 // Only called with do_mike / profiling debugging opt enabled
 int CC gbh_GetUsedCache(int a1)
 {
+    DWORD base = (DWORD)gFuncs.hinstance;
+    base =+ 0x13D20;
+
+    SCache** hack = (SCache**)base;
+
+    // 12_array_dword_E13D80 int[12]
+    // gPtr_12_array_dword_E13D20 STexture*[12]
+
+    //
+
    // __debugbreak();
-    return 999;
+   // return 999;
+    int r = gFuncs.pgbh_GetUsedCache(a1);
+
+    return r;
 }
 
 static SVideo* gpVideoDriver_E13DC8 = nullptr;

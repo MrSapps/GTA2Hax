@@ -62,7 +62,7 @@ int CC gbh_DrawFlatRect(int a1, int a2);
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour);
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5);
 s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4);
-void CC gbh_DrawTriangle(int a1, int a2, int a3, int a4);
+void CC gbh_DrawTriangle(int flags, STexture* pTexture, Verts* pVerts, int baseColour);
 void CC gbh_EndLevel();
 __int64 CC gbh_EndScene();
 int CC gbh_FreeImageTable();
@@ -152,11 +152,14 @@ struct S3DFunctions
     decltype(&gbh_SetColourDepth) pgbh_SetColourDepth;
     decltype(&gbh_SetWindow) pgbh_SetWindow;
     decltype(&gbh_UnlockTexture) pgbh_UnlockTexture;
+
+    HINSTANCE hinstance;
 };
 
 
-void PopulateS3DFunctions(HINSTANCE h, S3DFunctions& f)
+inline void PopulateS3DFunctions(HINSTANCE h, S3DFunctions& f)
 {
+    f.hinstance = h;
     GetFunc(h, f.pConvertColourBank, "ConvertColourBank");
     GetFunc(h, f.pDrawLine, "DrawLine");
     GetFunc(h, f.pSetShadeTableA, "SetShadeTableA");

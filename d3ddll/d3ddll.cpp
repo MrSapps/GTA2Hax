@@ -210,15 +210,15 @@ void SetRenderStates_E02960(int states)
     }
 }
 
-void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
+void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
     // Flags meanings:
-    // 0x10000 = fit texture??
+    // 0x10000 = fit quad and texture coords to texture size
     // 0x20000 = texture filtering, force enabled by 0x10000
     // 0x300 = alpha blending, 0x80 picks sub blending mode
     // 0x8000 lighting? or shadow
     // 0x2000 = use alpha in diffuse colour
-
+    /*
     if (pVerts->mVerts[0].z > 0.0f)
     {
         if (NotClipped(pVerts))
@@ -252,41 +252,39 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
 
             if (pTexture->field_1C_ptr)
             {
-                /*
-                if (!(pTexture->field_13_flags & 0x80))
+                
+                //if (!(pTexture->field_13_flags & 0x80))
                 {
-                    goto LABEL_50; // Already have a field_1C_ptr
+                    //goto LABEL_50; // Already have a field_1C_ptr
                 }
 
-                const bool bHas0x40Flag = pTexture->field_13_flags & 0x40;
-                if (bHas0x40Flag && flags & 0x300)
+                //const bool bHas0x40Flag = pTexture->field_13_flags & 0x40;
+                //if (bHas0x40Flag && flags & 0x300)
                 {
                     // Reinit field_1C_ptr?
 
-                    sub_E01EC0(pTexture);
-                    sub_E02810(pTexture, flags);
-                    v10 = pTexture->field_13 & 0xBF;
-                    pTexture->field_13_flags = v10;
+                    //sub_E01EC0(pTexture);
+                    //sub_E02810(pTexture, flags);
+                    //v10 = pTexture->field_13 & 0xBF;
+                    //pTexture->field_13_flags = v10;
                     
-                    goto LABEL_49;
+                    //goto LABEL_49;
                 }
                 
-                if (bHas0x40Flag || flags & 0x300)
+                //if (bHas0x40Flag || flags & 0x300)
                 {
                     // Nothing changed, can use field_1C_ptr?
-                    goto LABEL_50;
+                    //goto LABEL_50;
                 }
 
                 // Reinit field_1C_ptr? But also set 0x40
-                sub_E01EC0(pTexture);
-                sub_E02810(pTexture, flags);
-                v9 = pTexture->field_13_flags;
-                v10 = v9 | 0x40;
-                pTexture->field_13_flags = v10;
+                //sub_E01EC0(pTexture);
+                //sub_E02810(pTexture, flags);
+                //v9 = pTexture->field_13_flags;
+                //v10 = v9 | 0x40;
+                //pTexture->field_13_flags = v10;
 
-                goto LABEL_49;
-
-                */
+                //goto LABEL_49;
             }
             else
             {
@@ -303,30 +301,30 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
                     //v13 = pTexture->field_1C_ptr;
                     //v14 = *(_DWORD *)(v13 + 0x24);
 
-                    /*
-                    if (dword_E13DF4 != v14)
+                    
+                   // if (dword_E13DF4 != v14)
                     {
-                        sub_E06110(*(_DWORD *)(v13 + 0x24));
-                        dword_E13DF4 = v14;
-                        ++dword_E43EA4;
-                        v15 = *(_DWORD *)(v13 + 28);
-                        *(_DWORD *)(v13 + 8) = dword_E43E4C;
-                        if (v15)
+                        //sub_E06110(*(_DWORD *)(v13 + 0x24));
+                        //dword_E13DF4 = v14;
+                        //++dword_E43EA4;
+                       // v15 = *(_DWORD *)(v13 + 28);
+                        //*(_DWORD *)(v13 + 8) = dword_E43E4C;
+                        //if (v15)
                         {
-                            v16 = *(_DWORD *)(v13 + 32);
-                            if (v16)
-                                *(_DWORD *)(v16 + 28) = v15;
-                            else
-                                dword_E13D20[*(unsigned __int16 *)(v13 + 6)] = v15;
-                            *(_DWORD *)(*(_DWORD *)(v13 + 28) + 32) = *(_DWORD *)(v13 + 32);
-                            v17 = *(_WORD *)(v13 + 6);
-                            *(_DWORD *)(v13 + 28) = 0;
-                            *(_DWORD *)(v13 + 32) = dword_E13D80[v17];
-                            *(_DWORD *)(dword_E13D80[v17] + 28) = v13;
-                            dword_E13D80[*(unsigned __int16 *)(v13 + 6)] = v13;
+                            //v16 = *(_DWORD *)(v13 + 32);
+                            //if (v16)
+                            //    *(_DWORD *)(v16 + 28) = v15;
+                            //else
+                            //    dword_E13D20[*(unsigned __int16 *)(v13 + 6)] = v15;
+                            //*(_DWORD *)(*(_DWORD *)(v13 + 28) + 32) = *(_DWORD *)(v13 + 32);
+                            //v17 = *(_WORD *)(v13 + 6);
+                            //*(_DWORD *)(v13 + 28) = 0;
+                           // *(_DWORD *)(v13 + 32) = dword_E13D80[v17];
+                           // *(_DWORD *)(dword_E13D80[v17] + 28) = v13;
+                           // dword_E13D80[*(unsigned __int16 *)(v13 + 6)] = v13;
                         }
                     }
-                    */
+                    
 
                     const auto flagsCopy = flags;
                     float uvScale = 1.0f;
@@ -336,23 +334,23 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
                         const float textureW = pTexture->field_E_width;
                         const float textureH = pTexture->field_10_height;
                         
-                        /* GPU specific hack
-                        if (dword_E13884)
+                        // GPU specific hack
+                        //if (dword_E13884)
                         {
-                            v19 = pVerts->mVerts[0].x;
-                            floor(v19);
-                            pVerts->mVerts[0].x = v19;
-                            v20 = pVerts->mVerts[0].y;
-                            floor(v20);
-                            pVerts->mVerts[0].y = v20;
+                            //v19 = pVerts->mVerts[0].x;
+                            //floor(v19);
+                            //pVerts->mVerts[0].x = v19;
+                            //v20 = pVerts->mVerts[0].y;
+                            //floor(v20);
+                            //pVerts->mVerts[0].y = v20;
                         }
-                        */
+                        
 
-                        /*
-                        v21 = pVerts->mVerts[0].x + textureW;
-                        v23 = v21 - flt_E10830;
-                        v24 = pVerts->mVerts[0].y + textureH;
-                        */
+                        
+                        //v21 = pVerts->mVerts[0].x + textureW;
+                        //v23 = v21 - flt_E10830;
+                        //v24 = pVerts->mVerts[0].y + textureH;
+                        
 
                         pVerts->mVerts[1].z = pVerts->mVerts[0].z;
                         pVerts->mVerts[2].z = pVerts->mVerts[0].z;
@@ -413,11 +411,10 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
 
                     if (flagsCopy & 0x8000)
                     {
-                        /*
-                        if (flt_E10838 != 255.0f)
+                        //if (flt_E10838 != 255.0f)
                         {
-                            sub_E02A80(4, pVerts, 0, alpha);
-                        }*/
+                            //sub_E02A80(4, pVerts, 0, alpha);
+                        }
                     }
                     
                     d3ddev_dword_E485E0->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 4, D3DDP_DONOTUPDATEEXTENTS);
@@ -428,10 +425,11 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
             }
 
             // dead - edited above
-            //v10 = v9 | 0x40;
-            //goto LABEL_49;
+            // v10 = v9 | 0x40;
+            // goto LABEL_49;
         }
     }
+    */
 
     if (pTexture)
     {
@@ -446,7 +444,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
     // flags = 0;
 
 
-    return gFuncs.pgbh_DrawQuad(flags, pTexture, pVerts, alpha);
+    return gFuncs.pgbh_DrawQuad(flags, pTexture, pVerts, baseColour);
 }
 
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)

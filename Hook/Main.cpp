@@ -153,37 +153,41 @@ int __fastcall sub_474530(void* thisPtr, void* hack)
 {
     const float kU = 14;
 
-    /*
     // Top left
     Verts d = {};
-    d.mData[0].x = 0;
-    d.mData[0].y = 0;
-    d.mData[0].u = kU;
+    d.mVerts[0].x = 0;
+    d.mVerts[0].y = 0;
+    d.mVerts[0].z = kU;
+    d.mVerts[0].diff = 0xa0000000;
+    d.mVerts[0].u = 0.3f;
+    d.mVerts[0].v = 0.3f;
 
     // Top right
-    d.mData[2].x = 900;
-    d.mData[2].y = 0;
-    d.mData[2].u = kU;
-
-    d.mData[3].u = kU;
+    d.mVerts[1].x = 900;
+    d.mVerts[1].y = 0;
+    d.mVerts[1].z = kU;
+    d.mVerts[1].diff = 0xa0000000;
+    d.mVerts[1].u = 17.6999989f;
+    d.mVerts[1].v = 0.3f;
 
     // Bottom right
-    d.mData[4].x = 900;
-    d.mData[4].y = 400;
-    d.mData[4].u = kU;
-
-    d.mData[5].u = kU;
-    d.mData[5].v = 14;
+    d.mVerts[2].x = 900;
+    d.mVerts[2].y = 400;
+    d.mVerts[2].z = kU;
+    d.mVerts[2].diff = 0xa0000000;
+    d.mVerts[2].u = 17.6999989f;
+    d.mVerts[2].v = 25.0f;
 
     // Bottom left
-    d.mData[6].x = 0;
-    d.mData[6].y = 400;
-    d.mData[6].u = kU;
+    d.mVerts[3].x = 0;
+    d.mVerts[3].y = 400;
+    d.mVerts[3].z = kU;
+    d.mVerts[3].diff = 0xa0000000;
+    d.mVerts[3].u = 0.3f;
+    d.mVerts[3].v = 25.0f;
 
-    d.mData[7].v = 14;
-
-    api.pgbh_DrawQuad(0, 0, &d, 128);
-    */
+    api.pgbh_DrawQuad(0, 0, &d, 255);
+    
 
     return 0;
 }

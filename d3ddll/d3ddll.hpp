@@ -59,7 +59,7 @@ void CC gbh_CloseScreen(SVideo* pVideo);
 unsigned int CC gbh_Convert16BitGraphic(int a1, unsigned int a2, WORD *a3, signed int a4);
 unsigned int CC gbh_ConvertColour(unsigned __int8 a1, unsigned __int8 a2, unsigned __int8 a3);
 int CC gbh_DrawFlatRect(int a1, int a2);
-void CC gbh_DrawQuad(int a1, STexture* pTexture, Verts* a3, int a4);
+void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour);
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5);
 s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4);
 void CC gbh_DrawTriangle(int a1, int a2, int a3, int a4);

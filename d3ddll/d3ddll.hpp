@@ -23,10 +23,10 @@ struct STexture
     u16 field_E_width;
     u16 field_10_height;
     u8 field_12;
-    u8 field_13_flags;
+    u8 field_13_flags_from_SPal_field8;
     void* field_14_data;
-    void* field_18_pPlat;
-    u32 field_1C_ptr;
+    void* field_18_pPaltData;
+    u32 field_1C_ptr; // +32 == IUnknown, DDSurface ptr ?
 };
 static_assert(sizeof(STexture) == 0x20, "Wrong sized STexture");
 

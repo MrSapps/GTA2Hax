@@ -213,7 +213,7 @@ void SetRenderStates_E02960(int states)
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
 {
     // Flags meanings:
-    // 0x10000 = ??
+    // 0x10000 = fit texture??
     // 0x20000 = texture filtering, force enabled by 0x10000
     // 0x300 = alpha blending, 0x80 picks sub blending mode
     // 0x8000 lighting? or shadow
@@ -253,35 +253,54 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
             if (pTexture->field_1C_ptr)
             {
                 /*
-                v11 = pTexture->field_13_flags;
-                if (!(v11 & 0x80))
-                    goto LABEL_50;
-                v12 = v11 & 0x40;
-                if (v12 && flags & 0x300)
+                if (!(pTexture->field_13_flags & 0x80))
                 {
+                    goto LABEL_50; // Already have a field_1C_ptr
+                }
+
+                const bool bHas0x40Flag = pTexture->field_13_flags & 0x40;
+                if (bHas0x40Flag && flags & 0x300)
+                {
+                    // Reinit field_1C_ptr?
+
                     sub_E01EC0(pTexture);
                     sub_E02810(pTexture, flags);
                     v10 = pTexture->field_13 & 0xBF;
+                    pTexture->field_13_flags = v10;
+                    
                     goto LABEL_49;
                 }
-                if (v12 || flags & 0x300)
+                
+                if (bHas0x40Flag || flags & 0x300)
+                {
+                    // Nothing changed, can use field_1C_ptr?
                     goto LABEL_50;
+                }
+
+                // Reinit field_1C_ptr? But also set 0x40
                 sub_E01EC0(pTexture);
                 sub_E02810(pTexture, flags);
-                v9 = pTexture->field_13;
+                v9 = pTexture->field_13_flags;
+                v10 = v9 | 0x40;
+                pTexture->field_13_flags = v10;
+
+                goto LABEL_49;
+
                 */
             }
             else
             {
-                //sub_E02810(pTexture, flags);
+                //sub_E02810(pTexture, flags); // set/reinit field_1C_ptr
                 //v9 = pTexture->field_13;
+
                 if (flags & 0x300) // Blending
-                {
+                { // else goto label_49 / skip flag changes
+
                     //v10 = v9 & 0xBF;
                 LABEL_49:
-                    //pTexture->field_13 = v10;
+                    //pTexture->field_13_flags = v10;
                 LABEL_50:
-                    //v13 = pTexture->field_1C;
+                    //v13 = pTexture->field_1C_ptr;
                     //v14 = *(_DWORD *)(v13 + 0x24);
 
                     /*
@@ -310,11 +329,12 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
                     */
 
                     const auto flagsCopy = flags;
+                    float uvScale = 1.0f;
                     //pVertsb = *(SVerts **)(pTexture->field_1C + 12);
                     if (flags & 0x10000)
                     {
-                        //flagsa = (double)(unsigned __int16)pTexture->field_E_width;
-                        //*(float *)&pTexturea = (double)(unsigned __int16)pTexture->field_10_height;
+                        const float textureW = pTexture->field_E_width;
+                        const float textureH = pTexture->field_10_height;
                         
                         /* GPU specific hack
                         if (dword_E13884)
@@ -329,54 +349,52 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
                         */
 
                         /*
-                        v21 = pVerts->mVerts[0].x + flagsa;
+                        v21 = pVerts->mVerts[0].x + textureW;
                         v23 = v21 - flt_E10830;
-                        v24 = *(float *)&pTexturea + pVerts->mVerts[0].y;
+                        v24 = pVerts->mVerts[0].y + textureH;
+                        */
 
                         pVerts->mVerts[1].z = pVerts->mVerts[0].z;
                         pVerts->mVerts[2].z = pVerts->mVerts[0].z;
                         pVerts->mVerts[3].z = pVerts->mVerts[0].z;
 
-                        pVerts->mVerts[1].x = v23;
+                        //pVerts->mVerts[1].x = v23;
                         pVerts->mVerts[1].y = pVerts->mVerts[0].y;
 
-                        pVerts->mVerts[2].x = v21 - flt_E10830;
-                        pVerts->mVerts[2].y = v24 - flt_E10830;
+                        //pVerts->mVerts[2].x = v21 - flt_E10830;
+                        //pVerts->mVerts[2].y = v24 - flt_E10830;
 
                         pVerts->mVerts[3].x = pVerts->mVerts[0].x;
-                        pVerts->mVerts[3].y = v24 - flt_E10830;;
+                        //pVerts->mVerts[3].y = v24 - flt_E10830;
 
                         pVerts->mVerts[0].u = 0;
                         pVerts->mVerts[0].v = 0;
 
-                        pVerts->mVerts[1].u = flagsa - flt_E1082C;
+                        //pVerts->mVerts[1].u = textureW - flt_E1082C;
                         pVerts->mVerts[1].v = 0;
 
-                        pVerts->mVerts[2].u = flagsa - flt_E1082C;
-                        pVerts->mVerts[2].v = *(float *)&pTexturea - flt_E1082C;
+                        //pVerts->mVerts[2].u = textureW - flt_E1082C;
+                        //pVerts->mVerts[2].v = textureH - flt_E1082C;
 
                         pVerts->mVerts[3].u = 0;
-                        pVerts->mVerts[3].v = *(float *)&pTexturea - flt_E1082C;
-                        */
+                        //pVerts->mVerts[3].v = textureH - flt_E1082C;
                     }
                     pVerts->mVerts[0].w = pVerts->mVerts[0].z;
                     pVerts->mVerts[1].w = pVerts->mVerts[1].z;
                     pVerts->mVerts[2].w = pVerts->mVerts[2].z;
                     pVerts->mVerts[3].w = pVerts->mVerts[3].z;
 
-                    /*
-                    pVerts->mVerts[0].u = *(float *)&pVertsb * pVerts->mVerts[0].u;
-                    pVerts->mVerts[0].v = *(float *)&pVertsb * pVerts->mVerts[0].v;
+                    pVerts->mVerts[0].u = uvScale * pVerts->mVerts[0].u;
+                    pVerts->mVerts[0].v = uvScale * pVerts->mVerts[0].v;
 
-                    pVerts->mVerts[1].u = *(float *)&pVertsb * pVerts->mVerts[1].u;
-                    pVerts->mVerts[1].v = *(float *)&pVertsb * pVerts->mVerts[1].v;
+                    pVerts->mVerts[1].u = uvScale * pVerts->mVerts[1].u;
+                    pVerts->mVerts[1].v = uvScale * pVerts->mVerts[1].v;
 
-                    pVerts->mVerts[2].u = *(float *)&pVertsb * pVerts->mVerts[2].u;
-                    pVerts->mVerts[2].v = *(float *)&pVertsb * pVerts->mVerts[2].v;
+                    pVerts->mVerts[2].u = uvScale * pVerts->mVerts[2].u;
+                    pVerts->mVerts[2].v = uvScale * pVerts->mVerts[2].v;
 
-                    pVerts->mVerts[3].u = *(float *)&pVertsb * pVerts->mVerts[3].u;
-                    pVerts->mVerts[3].v = *(float *)&pVertsb * pVerts->mVerts[3].v;
-                    */
+                    pVerts->mVerts[3].u = uvScale * pVerts->mVerts[3].u;
+                    pVerts->mVerts[3].v = uvScale * pVerts->mVerts[3].v;
 
                     if (!(flagsCopy & 0x2000))
                     {
@@ -393,16 +411,15 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
                     pVerts->mVerts[2].spec = 0;
                     pVerts->mVerts[3].spec = 0;
 
-                    /*
                     if (flagsCopy & 0x8000)
                     {
+                        /*
                         if (flt_E10838 != 255.0f)
                         {
                             sub_E02A80(4, pVerts, 0, alpha);
-                        }
+                        }*/
                     }
-                    */
-
+                    
                     d3ddev_dword_E485E0->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 4, D3DDP_DONOTUPDATEEXTENTS);
                     gNumTrisDrawn_E43EA0 += 2;
 
@@ -410,8 +427,9 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
                 }
             }
 
+            // dead - edited above
             //v10 = v9 | 0x40;
-            goto LABEL_49;
+            //goto LABEL_49;
         }
     }
 
@@ -887,14 +905,14 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
     result->field_12 = stru_E13E00[pal_idx].field_8;
     if (a5 /*&& isAtiRagePro*/)
     {
-        result->field_13_flags = 0x80u;
+        result->field_13_flags_from_SPal_field8 = 0x80u;
     }
     else
     {
-        result->field_13_flags = 0;
+        result->field_13_flags_from_SPal_field8 = 0;
     }
     result->field_14_data = pData;
-    result->field_18_pPlat = stru_E13E00[pal_idx].field_4_pNewData;
+    result->field_18_pPaltData = stru_E13E00[pal_idx].field_4_pNewData;
     result->field_1C_ptr = 0;
 
 //    return result;

@@ -13,7 +13,7 @@ using u8 = unsigned char;
 
 struct STexture
 {
-    u16 field_0;
+    u16 field_0_id;
     u16 field_2;
     u16 field_4;
     u16 field_6;
@@ -25,23 +25,23 @@ struct STexture
     u8 field_12;
     u8 field_13_flags;
     void* field_14_data;
-    u32 field_18_pPlat;
+    void* field_18_pPlat;
     u32 field_1C_ptr;
 };
 static_assert(sizeof(STexture) == 0x20, "Wrong sized STexture");
 
-struct SVertex
+struct Vert
 {
-    float x;
-    float y;
-    float u;
-    float v;
+    float x, y, z, w;
+    DWORD diff;
+    DWORD spec;
+    float u, v;
 };
+static_assert(sizeof(Vert) == 0x20, "wrong size");
 
-
-struct SPrim
+struct Verts
 {
-    SVertex mData[8];
+    Vert mVerts[4];
 };
 
 void CC ConvertColourBank(s32 unknown);
@@ -59,7 +59,7 @@ void CC gbh_CloseScreen(SVideo* pVideo);
 unsigned int CC gbh_Convert16BitGraphic(int a1, unsigned int a2, WORD *a3, signed int a4);
 unsigned int CC gbh_ConvertColour(unsigned __int8 a1, unsigned __int8 a2, unsigned __int8 a3);
 int CC gbh_DrawFlatRect(int a1, int a2);
-void CC gbh_DrawQuad(int a1, STexture* pTexture, SPrim* a3, int a4);
+void CC gbh_DrawQuad(int a1, STexture* pTexture, Verts* a3, int a4);
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5);
 s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4);
 void CC gbh_DrawTriangle(int a1, int a2, int a3, int a4);

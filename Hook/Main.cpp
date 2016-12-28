@@ -153,8 +153,9 @@ int __fastcall sub_474530(void* thisPtr, void* hack)
 {
     const float kU = 14;
 
+    /*
     // Top left
-    SPrim d = {};
+    Verts d = {};
     d.mData[0].x = 0;
     d.mData[0].y = 0;
     d.mData[0].u = kU;
@@ -182,6 +183,7 @@ int __fastcall sub_474530(void* thisPtr, void* hack)
     d.mData[7].v = 14;
 
     api.pgbh_DrawQuad(0, 0, &d, 128);
+    */
 
     return 0;
 }

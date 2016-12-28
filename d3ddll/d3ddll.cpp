@@ -4,6 +4,8 @@
 #include <d3d.h>
 #include <vector>
 
+#define BYTEn(x, n)   (*((BYTE*)&(x)+n))
+#define BYTE1(x)   BYTEn(x,  1)
 
 #pragma comment(lib, "dxguid.lib")
 
@@ -108,13 +110,311 @@ int CC gbh_DrawFlatRect(int a1, int a2)
 
 STexture* pLast = nullptr;
 
-void CC gbh_DrawQuad(int flags, STexture* pTexture, SPrim* pData, int alpha)
+
+
+static bool NotClipped(Verts* pVerts)
 {
-    // 0x10000 = rotation or scale related? 
-    // 0x20000 =
-    // 0x300 = semi trans/some other blending mode?
+    float maxX = pVerts->mVerts[0].x;
+    if (maxX > pVerts->mVerts[1].x)
+        maxX = pVerts->mVerts[1].x;
+    if (maxX > pVerts->mVerts[2].x)
+        maxX = pVerts->mVerts[2].x;
+    if (maxX > pVerts->mVerts[3].x)
+        maxX = pVerts->mVerts[3].x;
+
+    float minX = pVerts->mVerts[0].x;
+    if (minX < pVerts->mVerts[1].x)
+        minX = pVerts->mVerts[1].x;
+    if (minX < pVerts->mVerts[2].x)
+        minX = pVerts->mVerts[2].x;
+    if (minX < pVerts->mVerts[3].x)
+        minX = pVerts->mVerts[3].x;
+
+    float maxY = pVerts->mVerts[0].y;
+    if (maxY > pVerts->mVerts[1].y)
+        maxY = pVerts->mVerts[1].y;
+    if (maxY > pVerts->mVerts[2].y)
+        maxY = pVerts->mVerts[2].y;
+    if (maxY > pVerts->mVerts[3].y)
+        maxY = pVerts->mVerts[3].y;
+
+    float minY = pVerts->mVerts[0].y;
+    if (minY < pVerts->mVerts[1].y)
+        minY = pVerts->mVerts[1].y;
+    if (minY < pVerts->mVerts[2].y)
+        minY = pVerts->mVerts[2].y;
+    if (minY < pVerts->mVerts[3].y)
+        minY = pVerts->mVerts[3].y;
+
+    return true;
+    /*
+    return (maxX <= dword_E43E0C
+        && minX >= dword_E43E08
+        && maxY <= dword_E43E14
+        && minY >= dword_E43E10);
+        */
+}
+
+DWORD bPointFilteringOn_E48604 = 0;
+IDirect3DDevice3* d3ddev_dword_E485E0 = 0;
+DWORD renderStateCache_E43E24 = 0;
+DWORD gNumTrisDrawn_E43EA0 = 0;
+
+void SetRenderStates_E02960(int states)
+{
+    if (states & 0x380)
+    {
+        if (states & 0x80) // BYTE1(states) & 2
+        {
+            auto result = renderStateCache_E43E24;
+            if (renderStateCache_E43E24 == 1)
+            {
+                result = 0;
+                renderStateCache_E43E24 = 0;
+            }
+
+            if (!result)
+            {
+                renderStateCache_E43E24 = 2;
+                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1); // 27, 1
+                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE); // 19, 1
+                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_ONE); // 20, 1
+            }
+        }
+        else if (states & 0x180)
+        {
+            auto result = renderStateCache_E43E24;
+            if (renderStateCache_E43E24 == 2)
+            {
+                result = 0;
+                renderStateCache_E43E24 = 0;
+            }
+            if (!result)
+            {
+                renderStateCache_E43E24 = 1;
+
+                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMAPBLEND, D3DTBLEND_MODULATEALPHA); // 21, 4
+                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1); // 27, 1
+                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA); // 19, 5
+                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA); // 20, 6
+            }
+        }
+    }
+    else
+    {
+        if (renderStateCache_E43E24)
+        {
+            d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0); // 27, 0
+            renderStateCache_E43E24 = 0;
+        }
+    }
+}
+
+void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int alpha)
+{
+    // Flags meanings:
+    // 0x10000 = ??
+    // 0x20000 = texture filtering, force enabled by 0x10000
+    // 0x300 = alpha blending, 0x80 picks sub blending mode
     // 0x8000 lighting? or shadow
-    // 0x2000 = semi trans or use alpha?
+    // 0x2000 = use alpha in diffuse colour
+
+    if (pVerts->mVerts[0].z > 0.0f)
+    {
+        if (NotClipped(pVerts))
+        {
+            if (flags & 0x10000) // whatever this flag is turns point filtering on
+            {
+                flags |= 0x20000;
+            }
+            
+            SetRenderStates_E02960(flags);
+            
+            if (flags & 0x20000)
+            {
+                if (!bPointFilteringOn_E48604)
+                {
+                    bPointFilteringOn_E48604 = 1;
+                    d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_POINT);
+                    d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_POINT);
+                }
+            }
+            else
+            {
+                if (bPointFilteringOn_E48604)
+                {
+                    bPointFilteringOn_E48604 = 0;
+                    d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_LINEAR);
+                    d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_LINEAR);
+                }
+            }
+            
+
+            if (pTexture->field_1C_ptr)
+            {
+                /*
+                v11 = pTexture->field_13_flags;
+                if (!(v11 & 0x80))
+                    goto LABEL_50;
+                v12 = v11 & 0x40;
+                if (v12 && flags & 0x300)
+                {
+                    sub_E01EC0(pTexture);
+                    sub_E02810(pTexture, flags);
+                    v10 = pTexture->field_13 & 0xBF;
+                    goto LABEL_49;
+                }
+                if (v12 || flags & 0x300)
+                    goto LABEL_50;
+                sub_E01EC0(pTexture);
+                sub_E02810(pTexture, flags);
+                v9 = pTexture->field_13;
+                */
+            }
+            else
+            {
+                //sub_E02810(pTexture, flags);
+                //v9 = pTexture->field_13;
+                if (flags & 0x300) // Blending
+                {
+                    //v10 = v9 & 0xBF;
+                LABEL_49:
+                    //pTexture->field_13 = v10;
+                LABEL_50:
+                    //v13 = pTexture->field_1C;
+                    //v14 = *(_DWORD *)(v13 + 0x24);
+
+                    /*
+                    if (dword_E13DF4 != v14)
+                    {
+                        sub_E06110(*(_DWORD *)(v13 + 0x24));
+                        dword_E13DF4 = v14;
+                        ++dword_E43EA4;
+                        v15 = *(_DWORD *)(v13 + 28);
+                        *(_DWORD *)(v13 + 8) = dword_E43E4C;
+                        if (v15)
+                        {
+                            v16 = *(_DWORD *)(v13 + 32);
+                            if (v16)
+                                *(_DWORD *)(v16 + 28) = v15;
+                            else
+                                dword_E13D20[*(unsigned __int16 *)(v13 + 6)] = v15;
+                            *(_DWORD *)(*(_DWORD *)(v13 + 28) + 32) = *(_DWORD *)(v13 + 32);
+                            v17 = *(_WORD *)(v13 + 6);
+                            *(_DWORD *)(v13 + 28) = 0;
+                            *(_DWORD *)(v13 + 32) = dword_E13D80[v17];
+                            *(_DWORD *)(dword_E13D80[v17] + 28) = v13;
+                            dword_E13D80[*(unsigned __int16 *)(v13 + 6)] = v13;
+                        }
+                    }
+                    */
+
+                    const auto flagsCopy = flags;
+                    //pVertsb = *(SVerts **)(pTexture->field_1C + 12);
+                    if (flags & 0x10000)
+                    {
+                        //flagsa = (double)(unsigned __int16)pTexture->field_E_width;
+                        //*(float *)&pTexturea = (double)(unsigned __int16)pTexture->field_10_height;
+                        
+                        /* GPU specific hack
+                        if (dword_E13884)
+                        {
+                            v19 = pVerts->mVerts[0].x;
+                            floor(v19);
+                            pVerts->mVerts[0].x = v19;
+                            v20 = pVerts->mVerts[0].y;
+                            floor(v20);
+                            pVerts->mVerts[0].y = v20;
+                        }
+                        */
+
+                        /*
+                        v21 = pVerts->mVerts[0].x + flagsa;
+                        v23 = v21 - flt_E10830;
+                        v24 = *(float *)&pTexturea + pVerts->mVerts[0].y;
+
+                        pVerts->mVerts[1].z = pVerts->mVerts[0].z;
+                        pVerts->mVerts[2].z = pVerts->mVerts[0].z;
+                        pVerts->mVerts[3].z = pVerts->mVerts[0].z;
+
+                        pVerts->mVerts[1].x = v23;
+                        pVerts->mVerts[1].y = pVerts->mVerts[0].y;
+
+                        pVerts->mVerts[2].x = v21 - flt_E10830;
+                        pVerts->mVerts[2].y = v24 - flt_E10830;
+
+                        pVerts->mVerts[3].x = pVerts->mVerts[0].x;
+                        pVerts->mVerts[3].y = v24 - flt_E10830;;
+
+                        pVerts->mVerts[0].u = 0;
+                        pVerts->mVerts[0].v = 0;
+
+                        pVerts->mVerts[1].u = flagsa - flt_E1082C;
+                        pVerts->mVerts[1].v = 0;
+
+                        pVerts->mVerts[2].u = flagsa - flt_E1082C;
+                        pVerts->mVerts[2].v = *(float *)&pTexturea - flt_E1082C;
+
+                        pVerts->mVerts[3].u = 0;
+                        pVerts->mVerts[3].v = *(float *)&pTexturea - flt_E1082C;
+                        */
+                    }
+                    pVerts->mVerts[0].w = pVerts->mVerts[0].z;
+                    pVerts->mVerts[1].w = pVerts->mVerts[1].z;
+                    pVerts->mVerts[2].w = pVerts->mVerts[2].z;
+                    pVerts->mVerts[3].w = pVerts->mVerts[3].z;
+
+                    /*
+                    pVerts->mVerts[0].u = *(float *)&pVertsb * pVerts->mVerts[0].u;
+                    pVerts->mVerts[0].v = *(float *)&pVertsb * pVerts->mVerts[0].v;
+
+                    pVerts->mVerts[1].u = *(float *)&pVertsb * pVerts->mVerts[1].u;
+                    pVerts->mVerts[1].v = *(float *)&pVertsb * pVerts->mVerts[1].v;
+
+                    pVerts->mVerts[2].u = *(float *)&pVertsb * pVerts->mVerts[2].u;
+                    pVerts->mVerts[2].v = *(float *)&pVertsb * pVerts->mVerts[2].v;
+
+                    pVerts->mVerts[3].u = *(float *)&pVertsb * pVerts->mVerts[3].u;
+                    pVerts->mVerts[3].v = *(float *)&pVertsb * pVerts->mVerts[3].v;
+                    */
+
+                    if (!(flagsCopy & 0x2000))
+                    {
+                        // Force RGBA to be 255, 255, 255, A
+                        const auto finalDiffuse = (unsigned __int8)alpha | (((unsigned __int8)alpha | ((alpha | 0xFFFFFF00) << 8)) << 8);
+                        pVerts->mVerts[0].diff = finalDiffuse;
+                        pVerts->mVerts[1].diff = finalDiffuse;
+                        pVerts->mVerts[2].diff = finalDiffuse;
+                        pVerts->mVerts[3].diff = finalDiffuse;
+                    }
+
+                    pVerts->mVerts[0].spec = 0;
+                    pVerts->mVerts[1].spec = 0;
+                    pVerts->mVerts[2].spec = 0;
+                    pVerts->mVerts[3].spec = 0;
+
+                    /*
+                    if (flagsCopy & 0x8000)
+                    {
+                        if (flt_E10838 != 255.0f)
+                        {
+                            sub_E02A80(4, pVerts, 0, alpha);
+                        }
+                    }
+                    */
+
+                    d3ddev_dword_E485E0->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 4, D3DDP_DONOTUPDATEEXTENTS);
+                    gNumTrisDrawn_E43EA0 += 2;
+
+                    return;
+                }
+            }
+
+            //v10 = v9 | 0x40;
+            goto LABEL_49;
+        }
+    }
+
     if (pTexture)
     {
         pLast = pTexture;
@@ -125,10 +425,10 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, SPrim* pData, int alpha)
         pTexture = pLast;
     }
 
-   // flags = 0;
+    // flags = 0;
 
 
-    return gFuncs.pgbh_DrawQuad(flags, pTexture, pData, alpha);
+    return gFuncs.pgbh_DrawQuad(flags, pTexture, pVerts, alpha);
 }
 
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
@@ -554,30 +854,52 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
     return gFuncs.pgbh_RegisterPalette(paltId, pData);
 }
 
-static u32 gTextureId = 0;
+static u32 gTextureId_dword_E13D54 = 0;
 
-STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int a4, char a5)
+
+struct SPal
 {
-    /*
-    STexture* pTexture = reinterpret_cast<STexture*>(malloc(sizeof(STexture)));
-    if (pTexture)
+    void* field_0_pOriginalData;
+    void* field_4_pNewData;
+    DWORD field_8;
+};
+static_assert(sizeof(SPal) == 0xC, "Wrong size SPal");
+
+SPal stru_E13E00[128]; // TODO: Size is probably huge
+
+STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int pal_idx, char a5)
+{
+    STexture* result = reinterpret_cast<STexture*>(malloc(sizeof(STexture)));
+    if (!result)
     {
-        memset(pTexture, 0, sizeof(STexture));
-        pTexture->field_0 = gTextureId++;
-        //pTexture->field_4 = palt[a4];
-        pTexture->field_E_width = width;
-        pTexture->field_10_height = height;
-        //pTexture->field_12 = pSomething[a4];
-        //if (a5 && isAtiRagePro)
-        {
-            //pTexture->field_13_flags = 0x80;
-        }
-        pTexture->field_14_data = pData;
-        //pTexture->field_18_pPlat = palt[a4];
+        return 0;
     }
-    //return pTexture;
-    */
-    return gFuncs.pgbh_RegisterTexture(width, height, pData, a4, a5);
+
+    result->field_0_id = gTextureId_dword_E13D54++;
+    result->field_2 = 0;
+    result->field_4 = 0; // Yes, wtf ? LOBYTE(stru_E13E00[pal_idx].field_4_pNewData);
+    result->field_E_width = width;
+    result->field_6 = 0;
+    result->field_8 = 0;
+    result->field_C = 0;
+    result->field_D = 0;
+    result->field_10_height = height;
+    result->field_12 = stru_E13E00[pal_idx].field_8;
+    if (a5 /*&& isAtiRagePro*/)
+    {
+        result->field_13_flags = 0x80u;
+    }
+    else
+    {
+        result->field_13_flags = 0;
+    }
+    result->field_14_data = pData;
+    result->field_18_pPlat = stru_E13E00[pal_idx].field_4_pNewData;
+    result->field_1C_ptr = 0;
+
+//    return result;
+
+    return gFuncs.pgbh_RegisterTexture(width, height, pData, pal_idx, a5);
 }
 
 void CC gbh_ResetLights()

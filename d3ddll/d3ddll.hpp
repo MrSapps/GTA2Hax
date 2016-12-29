@@ -16,15 +16,15 @@ struct STexture
     u16 field_0_id;
     u16 field_2;
     u16 field_4;
-    u16 field_6;
-    u32 field_8;
+    u16 field_6_pal_size;
+    void* field_8_locked_pixels_ptr;
     u8 field_C;
     u8 field_D;
     u16 field_E_width;
     u16 field_10_height;
     u8 field_12;
     u8 field_13_flags_from_SPal_field8;
-    void* field_14_data;
+    void* field_14_original_pixel_data_ptr;
     void* field_18_pPaltData;
     u32 field_1C_ptr; // +32 == IUnknown, DDSurface ptr ?
 };
@@ -49,7 +49,7 @@ int CC DrawLine(int a1, int a2, int a3, int a4, int a5);
 void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5);
 int CC MakeScreenTable(int* result, int a2, unsigned int a3);
 int CC gbh_AddLight(int a1);
-char CC gbh_AssignPalette(int a1, int a2);
+char CC gbh_AssignPalette(STexture* pTexture, int palId);
 void CC gbh_BeginLevel();
 int gbh_BeginScene();
 int CC gbh_BlitBuffer(int a1, int a2, int a3, int a4, int a5, int a6);
@@ -64,7 +64,7 @@ void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5);
 s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4);
 void CC gbh_DrawTriangle(int flags, STexture* pTexture, Verts* pVerts, int baseColour);
 void CC gbh_EndLevel();
-__int64 CC gbh_EndScene();
+double CC gbh_EndScene();
 int CC gbh_FreeImageTable();
 void CC gbh_FreePalette(int a1);
 void CC gbh_FreeTexture(STexture* pTexture);
@@ -95,17 +95,17 @@ struct SImage
 static_assert(sizeof(SImage) == 0x16, "Wrong sized SImage");
 
 signed int CC gbh_LoadImage(SImage* pImage);
-int CC gbh_LockTexture(STexture* pTexture);
+STexture* CC gbh_LockTexture(STexture* pTexture);
 void CC gbh_Plot(int a1, int a2, int a3, int a4);
 int CC gbh_PrintBitmap(int a1, int a2);
 unsigned int CC gbh_RegisterPalette(int a1, DWORD *a2);
 STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int a4, char a5);
 void CC gbh_ResetLights();
 void CC gbh_SetAmbient(float a1);
-int CC gbh_SetCamera(int a1, int a2, int a3, int a4);
+int CC gbh_SetCamera(float a1, float a2, float a3, float a4);
 int CC gbh_SetColourDepth();
-s32 CC gbh_SetWindow(int a1, int a2, int a3, int a4);
-int CC gbh_UnlockTexture(STexture* pTexture);
+float CC gbh_SetWindow(float left, float top, float right, float bottom);
+STexture* CC gbh_UnlockTexture(STexture* pTexture);
 
 
 struct S3DFunctions

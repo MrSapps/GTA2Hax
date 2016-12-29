@@ -1057,7 +1057,7 @@ static bool SurfaceRestored(SVideo* pVideo, IDirectDrawSurface4* pSurface)
 
 void CC Vid_FlipBuffers(SVideo* pVideo)
 {
-    TRACE_ENTRYEXIT;
+    //TRACE_ENTRYEXIT;
 
     if (pVideo && pVideo->field_134_SurfacePrimary && pVideo->field_138_Surface)
     {
@@ -1202,7 +1202,7 @@ s32 CC Vid_DisableWrites(SVideo* pVideoDriver)
 
 s32 CC Vid_GetSurface(SVideo* pVideoDriver)
 {
-    TRACE_ENTRYEXIT;
+    //TRACE_ENTRYEXIT;
 
     if (!pVideoDriver)
     {
@@ -1247,7 +1247,7 @@ s32 CC Vid_GetSurface(SVideo* pVideoDriver)
 
 s32 CC Vid_FreeSurface(SVideo* pVideoDriver)
 {
-    TRACE_ENTRYEXIT;
+    //TRACE_ENTRYEXIT;
 
     s32 ret = 0;
     if (pVideoDriver && (pVideoDriver->field_4_flags & 1) && pVideoDriver->field_4_flags & 2)

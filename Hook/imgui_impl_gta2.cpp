@@ -1,18 +1,22 @@
 #include "stdafx.h"
 #include "imgui_impl_gta2.h"
 #include "d3ddll.hpp"
+#include <vector>
+#include <windows.h>
 
 void Convert(const ImDrawVert* im, Vert* v)
 {
     v->x = im->pos.x;
     v->y = im->pos.y;
-    v->u = im->uv.x;
-    v->v = im->uv.y;
+    v->u = im->uv.x * 64.0f;
+    v->v = im->uv.y * 64.0f;
     v->z = 14;
     v->diff = 0xa0000000;
 }
 
 S3DFunctions* gApi = nullptr;
+STexture* gFont = nullptr;
+
 void ImGui_Impl_GTA2_Render(ImDrawData* draw_data)
 {
     draw_data->DeIndexAllBuffers();
@@ -36,7 +40,7 @@ void ImGui_Impl_GTA2_Render(ImDrawData* draw_data)
                     vtx_buffer++;
                 }
 
-                gApi->pgbh_DrawTriangle(0, nullptr, &v , 255);
+                gApi->pgbh_DrawTriangle(0, gFont, &v , 255);
             }
 
             //idx_buffer += pcmd->ElemCount;
@@ -46,7 +50,7 @@ void ImGui_Impl_GTA2_Render(ImDrawData* draw_data)
     }
 
 }
-
+std::vector<BYTE> d(256 * 256 * 256);
 IMGUI_API void ImGui_Impl_GTA2_Init(void* hwnd, void* device, S3DFunctions& api)
 {
     gApi = &api;
@@ -57,7 +61,19 @@ IMGUI_API void ImGui_Impl_GTA2_Init(void* hwnd, void* device, S3DFunctions& api)
     int width, height;
     io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
 
-    io.Fonts->TexID = (void *)(intptr_t)pixels;
+    // pal index
+    // bool gfx hack?
+
+    DWORD palData[256*64*2] = {};
+    int pal = gApi->pgbh_RegisterPalette(0, palData);
+
+   
+    gFont = gApi->pgbh_RegisterTexture(128, 128, d.data(), pal, 0);
+    
+
+    io.Fonts->TexID = (void *)(intptr_t)gFont;
+
+
 }
 
 IMGUI_API void ImGui_Impl_GTA2_Shutdown()

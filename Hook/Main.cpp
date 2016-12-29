@@ -200,7 +200,7 @@ int __fastcall sub_474530(void* thisPtr, void* hack)
     api.pgbh_DrawQuad(0, 0, &d, 255);
     */
 
-    return 0;
+    return psub_474530(thisPtr, hack);
 }
 
 void AddHooks()

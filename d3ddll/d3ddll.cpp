@@ -3,13 +3,151 @@
 #include <cmath>
 #include <d3d.h>
 #include <vector>
+#include <iostream>
+#include <set>
 
 #define BYTEn(x, n)   (*((BYTE*)&(x)+n))
 #define BYTE1(x)   BYTEn(x,  1)
 
 #pragma comment(lib, "dxguid.lib")
 
+static bool gProxyOnly = true;
+
+// Other
 static S3DFunctions gFuncs;
+static std::set<STexture*> gTextures;
+
+
+
+struct S3DDevice
+{
+    DWORD field_0_id;
+    char* field_4_device_name;
+    char* field_8_device_description;
+    DWORD field_C;
+    DWORD field_10;
+    DWORD field_14;
+    DWORD field_18_p0x60_byte_struct;
+    DWORD field_1C;
+    DWORD field_20_flags;
+    D3DDEVICEDESC field_24_deviceDesc;
+    DWORD field_120_context;
+    D3DDEVICEDESC field_124;
+    GUID field_220;
+    DWORD field_230_next_ptr;
+    DWORD field_234_backing_buffer;
+    DWORD field_238;
+};
+
+static_assert(sizeof(D3DDEVICEDESC) == 0xfc, "Wrong size D3DDEVICEDESC");
+static_assert(sizeof(S3DDevice) == 0x23C, "Wrong size S3DDevice");
+
+struct SD3dStruct
+{
+    SVideo* field_0_pVideoDriver;
+    S3DDevice* field_4_pnext_device;
+    void* field_8_pfirst_device;
+    void* field_C_device_info_ptr;
+    void* field_10;
+    S3DDevice* field_14_parray;
+    DWORD field_18_current_id;
+    DWORD field_1C;
+    DWORD field_20;
+    IDirect3D3* field_24_pID3d;
+    IDirect3DDevice3* field_28_ID3D_Device;
+    IDirect3DViewport3* field_2C_IViewPort;
+    void* field_30_44_bytes;
+    DWORD field_34;
+    DWORD field_38;
+    DWORD field_3C;
+    DWORD field_40;
+    DWORD field_44;
+    DWORD field_48;
+    DWORD field_4C;
+    DWORD field_50;
+    DWORD field_54;
+    DWORD field_58;
+    DWORD field_5C_pitchQ;
+    IUnknown* field_60_IUnknown;
+};
+static_assert(sizeof(SD3dStruct) == 0x64, "Wrong size SD3dStruct");
+
+// From dll
+static bool gbSurfaceIsFreed_E43E18 = false;
+static DWORD g0x30Size_dword_E43F10[12] = {};
+static DWORD gBatchFlushes_dword_2B93EA8 = 0;
+static DWORD mNumTextureSwaps_2B93EA4 = 0;
+static DWORD gNumPolysDrawn_dword_E43EA0 = 0;
+static DWORD gActiveTextureId_dword_2B63DF4 = 0;
+static double qword_2B60848 = 0;
+static DWORD frame_number_2B93E4C = 0;
+
+static DWORD bPointFilteringOn_E48604 = 0;
+static IDirect3DDevice3* d3ddev_dword_E485E0 = 0;
+static DWORD renderStateCache_E43E24 = 0;
+static DWORD gNumTrisDrawn_E43EA0 = 0;
+
+static SVideo* gpVideoDriver_E13DC8 = nullptr;
+static struct SD3dStruct* gD3dPtr_dword_21C85E0;
+static SPtrVideoFunctions gVideoDriverFuncs;
+
+
+static float gWindow_left_dword_E43E08;
+static float gWindow_right_dword_E43E0C;
+static float gWindow_top_dword_E43E10;
+static float gWindow_bottom_dword_E43E14;
+static DWORD gWindow_d5_dword_E13DC4;
+
+static float k1_2B638A0;
+static float gSceneTime_2B93EAC;
+
+
+struct SImageTableEntry
+{
+    IDirectDrawSurface7* field_0_ddsurface;
+    DWORD field_4;
+    DWORD field_8;
+    IDirectDrawSurface7* field_C_pSurface;
+};
+static SImageTableEntry*  gpImageTable_dword_E13894 = nullptr;
+static DWORD gpImageTableCount_dword_E13898 = 0;
+
+static u32 gTextureId_dword_E13D54 = 0;
+
+struct SPal
+{
+    void* field_0_pOriginalData;
+    void* field_4_pNewData;
+    DWORD field_8;
+};
+
+static_assert(sizeof(SPal) == 0xC, "Wrong size SPal");
+static SPal stru_E13E00[128]; // TODO: Size is probably huge
+
+struct SCache
+{
+    BYTE field_0;
+    BYTE field_1_flags;
+    BYTE field_2;
+    BYTE field_3;
+    WORD field_4;
+    WORD field_6_cache_idx;
+    DWORD field_8_used_Frame_num;
+    DWORD field_C;
+    DWORD field_10;
+    DWORD field_14;
+    DWORD field_18;
+    struct SCache* field_1C_pNext;
+    struct STexture* field_20_pTexture;
+    void* field_24_texture_id;
+    DWORD field_28;
+};
+
+// TODO
+STexture *__stdcall TextureCache_E01EC0(STexture *pTexture)
+{
+    return pTexture;
+}
 
 void CC ConvertColourBank(s32 unknown)
 {
@@ -18,7 +156,6 @@ void CC ConvertColourBank(s32 unknown)
 
 int CC DrawLine(int a1, int a2, int a3, int a4, int a5)
 {
-    __debugbreak();
     return std::abs(a4 - a2);
 }
 
@@ -27,29 +164,33 @@ void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5)
     __debugbreak();
 }
 
-std::vector<BYTE> hack(4096);
-
 int CC MakeScreenTable(int* result, int a2, unsigned int a3)
 {
     // TODO
-    //__debugbreak();
-    //return (int)hack.data();
+    if (gProxyOnly)
+    {
+        return gFuncs.pMakeScreenTable(result, a2, a3);
+    }
 
-    return gFuncs.pMakeScreenTable(result, a2, a3);
+    return 0;
 }
 
 int CC gbh_AddLight(int a1)
 {
-    //__debugbreak();
-    //return 0;
-    return gFuncs.pgbh_AddLight(a1);
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_AddLight(a1);
+    }
+    return 0;
 }
 
-char CC gbh_AssignPalette(int a1, int a2)
+char CC gbh_AssignPalette(STexture* pTexture, int palId)
 {
-    //__debugbreak();
-    //return 0;
-    return gFuncs.pgbh_AssignPalette(a1, a2);
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_AssignPalette(pTexture, palId);
+    }
+    return 0;
 }
 
 void CC gbh_BeginLevel()
@@ -57,12 +198,36 @@ void CC gbh_BeginLevel()
     __debugbreak();
 }
 
+static BOOL __stdcall DeviceBeginScene_E01BF0(SD3dStruct* pCtx)
+{
+    return pCtx->field_28_ID3D_Device->BeginScene() != 0;
+}
+
 int gbh_BeginScene()
 {
-    //__debugbreak();
-    //return 0;
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_BeginScene();
+    }
 
-    return gFuncs.pgbh_BeginScene();
+    if (gpVideoDriver_E13DC8->field_4_flags & 1)
+    {
+        gbSurfaceIsFreed_E43E18 = true;
+        (*gpVideoDriver_E13DC8->field_84_from_initDLL->pVid_FreeSurface)(gpVideoDriver_E13DC8);
+        //pVid_FreeSurface(gpVideoDriver_E13DC8);
+    }
+    else
+    {
+        gbSurfaceIsFreed_E43E18 = false;
+    }
+    memset(g0x30Size_dword_E43F10, 0, sizeof(g0x30Size_dword_E43F10));
+    gBatchFlushes_dword_2B93EA8 = 0;
+    mNumTextureSwaps_2B93EA4 = 0;
+    gNumPolysDrawn_dword_E43EA0 = 0;
+    gActiveTextureId_dword_2B63DF4 = -1;
+    qword_2B60848 = 0i64;
+    ++frame_number_2B93E4C;
+    return DeviceBeginScene_E01BF0(gD3dPtr_dword_21C85E0);
 }
 
 int CC gbh_BlitBuffer(int a1, int a2, int a3, int a4, int a5, int a6)
@@ -74,8 +239,11 @@ int CC gbh_BlitBuffer(int a1, int a2, int a3, int a4, int a5, int a6)
 char CC gbh_BlitImage(int a1, int a2, int a3, int a4, int a5, int a6, int a7)
 {
     //__debugbreak();
-    //return 0;
-    return gFuncs.pgbh_BlitImage(a1, a2, a3, a4, a5, a6, a7);
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_BlitImage(a1, a2, a3, a4, a5, a6, a7);
+    }
+    return 0;
 }
 
 void CC gbh_CloseDLL()
@@ -105,12 +273,6 @@ int CC gbh_DrawFlatRect(int a1, int a2)
     __debugbreak();
     return 0;
 }
-
-
-
-STexture* pLast = nullptr;
-
-
 
 static bool NotClipped(Verts* pVerts)
 {
@@ -146,21 +308,14 @@ static bool NotClipped(Verts* pVerts)
     if (minY < pVerts->mVerts[3].y)
         minY = pVerts->mVerts[3].y;
 
-    return true;
-    /*
-    return (maxX <= dword_E43E0C
-        && minX >= dword_E43E08
-        && maxY <= dword_E43E14
-        && minY >= dword_E43E10);
-        */
+    return (maxX <= gWindow_right_dword_E43E0C
+        && minX >= gWindow_left_dword_E43E08
+        && maxY <= gWindow_bottom_dword_E43E14
+        && minY >= gWindow_top_dword_E43E10);
 }
 
-DWORD bPointFilteringOn_E48604 = 0;
-IDirect3DDevice3* d3ddev_dword_E485E0 = 0;
-DWORD renderStateCache_E43E24 = 0;
-DWORD gNumTrisDrawn_E43EA0 = 0;
 
-void SetRenderStates_E02960(int states)
+static void SetRenderStates_E02960(int states)
 {
     if (states & 0x380)
     {
@@ -210,15 +365,22 @@ void SetRenderStates_E02960(int states)
     }
 }
 
+static STexture* pLast = nullptr;
+
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_DrawQuad(flags, pTexture, pVerts, baseColour);
+    }
+
     // Flags meanings:
     // 0x10000 = fit quad and texture coords to texture size
     // 0x20000 = texture filtering, force enabled by 0x10000
     // 0x300 = alpha blending, 0x80 picks sub blending mode
     // 0x8000 lighting? or shadow
     // 0x2000 = use alpha in diffuse colour
-    /*
+    
     if (pVerts->mVerts[0].z > 0.0f)
     {
         if (NotClipped(pVerts))
@@ -397,7 +559,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                     if (!(flagsCopy & 0x2000))
                     {
                         // Force RGBA to be 255, 255, 255, A
-                        const auto finalDiffuse = (unsigned __int8)alpha | (((unsigned __int8)alpha | ((alpha | 0xFFFFFF00) << 8)) << 8);
+                        const auto finalDiffuse = (unsigned __int8)baseColour | (((unsigned __int8)baseColour | ((baseColour | 0xFFFFFF00) << 8)) << 8);
                         pVerts->mVerts[0].diff = finalDiffuse;
                         pVerts->mVerts[1].diff = finalDiffuse;
                         pVerts->mVerts[2].diff = finalDiffuse;
@@ -429,7 +591,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
             // goto LABEL_49;
         }
     }
-    */
+    
 
     if (pTexture)
     {
@@ -457,11 +619,20 @@ s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4)
 {
     //__debugbreak();
     //return 0;
-    return gFuncs.pgbh_DrawTilePart(a1, a2, a3, a4);
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_DrawTilePart(a1, a2, a3, a4);
+    }
+    return 0;
 }
 
 void CC gbh_DrawTriangle(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_DrawTriangle(flags, pTexture, pVerts, baseColour);
+    }
+
 //    __debugbreak();
     if (pTexture)
     {
@@ -481,18 +652,38 @@ void CC gbh_EndLevel()
     __debugbreak();
 }
 
-__int64 CC gbh_EndScene()
+static BOOL __stdcall DeviceEndScene_E01C10(SD3dStruct* pD3d)
 {
-    //__debugbreak();
-    //return 0;
-    return gFuncs.pgbh_EndScene();
+    return pD3d->field_28_ID3D_Device->EndScene() != 0;
+}
+
+double CC gbh_EndScene()
+{
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_EndScene();
+    }
+
+    DeviceEndScene_E01C10(gD3dPtr_dword_21C85E0);
+    if (gbSurfaceIsFreed_E43E18 == 1)
+    {
+        (*gpVideoDriver_E13DC8->field_84_from_initDLL->pVid_GetSurface)(gpVideoDriver_E13DC8);
+        //pVid_GetSurface(gpVideoDriver_E13DC8);
+    }
+    double result = qword_2B60848 / k1_2B638A0;
+    gSceneTime_2B93EAC = qword_2B60848 / k1_2B638A0;// always 0 / 1 ?
+    return result;
 }
 
 int CC gbh_FreeImageTable()
 {
    // __debugbreak();
    // return 0;
-    return gFuncs.pgbh_FreeImageTable();
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_FreeImageTable();
+    }
+    return 0;
 }
 
 void CC gbh_FreePalette(int a1)
@@ -502,71 +693,64 @@ void CC gbh_FreePalette(int a1)
 
 void CC gbh_FreeTexture(STexture* pTexture)
 {
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_FreeTexture(pTexture);
+    }
+
     // TODO: Other stuff required
    // free(pTexture);
+    gTextures.erase(pTexture);
     gFuncs.pgbh_FreeTexture(pTexture);
 }
-
-u32 gTriangleCount = 0; // Some sort of counter
-
 
 struct SGlobals
 {
     DWORD mNumPolysDrawn;
     DWORD mNumTextureSwaps;
     DWORD mNumBatchFlushes;
-    DWORD hack[500];
+    DWORD mSceneTime_2B93EAC;
+
+    // Both statically set during init, cache sizes ?
+    DWORD dword_2B93EB0[12];
+    DWORD dword_2B93EE0[12];
+    DWORD g0x30Size_dword_E43F10[12]; // Cache hit counters
 };
 
 u32* CC gbh_GetGlobals()
 {
-  //  return &gTriangleCount;
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_GetGlobals();
+    }
+
     auto r = gFuncs.pgbh_GetGlobals();
 
-    /*
-    SGlobals* g = (SGlobals*)r;
-    g->mNumPolysDrawn = 12345;
-    g->mNumTextureSwaps = 666;
-    g->mNumBatchFlushes = 999;
-    g->hack[0] = 88888;
     
-    for (int i = 1; i < 500; i++)
+    SGlobals* g = (SGlobals*)r;
+    //g->mNumPolysDrawn = 12345;
+    //g->mNumTextureSwaps = 666;
+    //g->mNumBatchFlushes = 999;
+   
+    for (int i = 0; i < 12; i++)
     {
-        g->hack[i] = 77;
+        //g->dword_2B93EB0[i] = 77;
     }
-    */
+
     return r;
 }
 
-struct SCache
-{
-    BYTE field_0;
-    BYTE field_1_flags;
-    BYTE field_2;
-    BYTE field_3;
-    WORD field_4;
-    WORD field_6_cache_idx;
-    DWORD field_8_used_Frame_num;
-    DWORD field_C;
-    DWORD field_10;
-    DWORD field_14;
-    DWORD field_18;
-    void* field_1C_pNext;
-    void* field_20_pTexture;
-    void* field_24_texture_id;
-    DWORD field_28;
-};
-
-struct SCaches
-{
-    SCaches* mCaches[12];
-};
 
 // Only called with do_mike / profiling debugging opt enabled
 int CC gbh_GetUsedCache(int a1)
 {
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_GetUsedCache(a1);;
+    }
+
     DWORD base = (DWORD)gFuncs.hinstance;
-    base =+ 0x13D20;
+    base += 0x13D20;
 
     SCache** hack = (SCache**)base;
 
@@ -581,61 +765,6 @@ int CC gbh_GetUsedCache(int a1)
 
     return r;
 }
-
-static SVideo* gpVideoDriver_E13DC8 = nullptr;
-
-struct S3DDevice
-{
-    DWORD field_0_id;
-    char* field_4_device_name;
-    char* field_8_device_description;
-    DWORD field_C;
-    DWORD field_10;
-    DWORD field_14;
-    DWORD field_18_p0x60_byte_struct;
-    DWORD field_1C;
-    DWORD field_20_flags;
-    D3DDEVICEDESC field_24_deviceDesc;
-    DWORD field_120_context;
-    D3DDEVICEDESC field_124;
-    GUID field_220;
-    DWORD field_230_next_ptr;
-    DWORD field_234_backing_buffer;
-    DWORD field_238;
-};
-
-static_assert(sizeof(D3DDEVICEDESC) == 0xfc, "Wrong size D3DDEVICEDESC");
-static_assert(sizeof(S3DDevice) == 0x23C, "Wrong size S3DDevice");
-
-struct SD3dStruct
-{
-    SVideo* field_0_pVideoDriver;
-    S3DDevice* field_4_pnext_device;
-    void* field_8_pfirst_device;
-    void* field_C_device_info_ptr;
-    void* field_10;
-    S3DDevice* field_14_parray;
-    DWORD field_18_current_id;
-    DWORD field_1C;
-    DWORD field_20;
-    IDirect3D3* field_24_pID3d;
-    IDirect3DDevice3* field_28_ID3D_Device;
-    IDirect3DViewport3* field_2C_IViewPort;
-    void* field_30_44_bytes;
-    DWORD field_34;
-    DWORD field_38;
-    DWORD field_3C;
-    DWORD field_40;
-    DWORD field_44;
-    DWORD field_48;
-    DWORD field_4C;
-    DWORD field_50;
-    DWORD field_54;
-    DWORD field_58;
-    DWORD field_5C_pitchQ;
-    IUnknown* field_60_IUnknown;
-};
-static_assert(sizeof(SD3dStruct) == 0x64, "Wrong size SD3dStruct");
 
 static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(GUID FAR* lpGuid, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC pDeviceDesc1, LPD3DDEVICEDESC pDeviceDesc2, LPVOID pContext)
 {
@@ -719,7 +848,29 @@ SD3dStruct* D3DCreate_E01300(SVideo* pVideoDriver)
     return pd3d;
 }
 
-signed int __stdcall Set3dDevice_E01B90(SD3dStruct* pContext, int id)
+static void SetDeviceDefaultRenderStates_E01A90(SD3dStruct* pCtx)
+{
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_CULLMODE, D3DCULL_NONE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, FALSE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, FALSE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAPBLEND, D3DTBLEND_MODULATE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHAREF, 0x8000);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHAFUNC, D3DCMP_GREATER);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHATESTENABLE, FALSE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_SUBPIXEL, TRUE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREPERSPECTIVE, TRUE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_DITHERENABLE, TRUE);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DFILTER_LINEAR);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DFILTER_LINEAR);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_SHADEMODE, D3DSHADE_GOURAUD);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESS, D3DTADDRESS_MIRROR);
+    pCtx->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESS, D3DTADDRESS_CLAMP);
+}
+
+static signed int __stdcall Set3dDevice_E01B90(SD3dStruct* pContext, int id)
 {
     if (pContext->field_18_current_id)
     {
@@ -753,8 +904,6 @@ signed int __stdcall Set3dDevice_E01B90(SD3dStruct* pContext, int id)
     return 0; // result
 }
 
-SD3dStruct** gD3dPtr_dword_21C85E0 = (SD3dStruct**)0x21C85E0;
-
 signed int Init_E02340()
 {
     // TODO
@@ -771,6 +920,11 @@ signed int Init_E02340()
 
 s32 CC gbh_Init(int a1)
 {
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_Init(a1);
+    }
+
     /*
     int result = Init_E02340();
     if (!result)
@@ -783,8 +937,6 @@ s32 CC gbh_Init(int a1)
     auto ret = gFuncs.pgbh_Init(a1);
     return ret;
 }
-
-static SPtrVideoFunctions gVideoDriverFuncs;
 
 static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
 {
@@ -812,6 +964,11 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
     DetourTransactionCommit();
     */
 
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_InitDLL(pVideoDriver);
+    }
+
     auto ret = gFuncs.pgbh_InitDLL(pVideoDriver);
 
 
@@ -832,15 +989,6 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
     return ret;
 }
 
-struct SImageTableEntry
-{
-    IDirectDrawSurface7* field_0_ddsurface;
-    DWORD field_4;
-    DWORD field_8;
-    IDirectDrawSurface7* field_C_pSurface;
-};
-static SImageTableEntry*  gpImageTable_dword_E13894 = nullptr;
-static DWORD gpImageTableCount_dword_E13898 = 0;
 
 signed int CC gbh_InitImageTable(int tableSize)
 {
@@ -914,11 +1062,17 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
     }*/
 }
 
-int CC gbh_LockTexture(STexture* pTexture)
+STexture* CC gbh_LockTexture(STexture* pTexture)
 {
-    //__debugbreak();
-    //return 0;
-    return gFuncs.pgbh_LockTexture(pTexture);
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_LockTexture(pTexture);
+    }
+
+    pTexture->field_8_locked_pixels_ptr = pTexture->field_14_original_pixel_data_ptr;
+    pTexture->field_13_flags_from_SPal_field8 |= 1;
+    pTexture->field_6_pal_size = 256;
+    return TextureCache_E01EC0(pTexture);
 }
 
 void CC gbh_Plot(int a1, int a2, int a3, int a4)
@@ -937,25 +1091,21 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
     // TODO
     //__debugbreak();
     //return 1;
+    /*
+    BYTE* data = (BYTE*)pData;
 
+    for (int i = 0; i < 64*64; i++)
+    {
+        data[i] = i;
+    }
+    */
+    //std::cout << "RPAL" << std::endl;
     return gFuncs.pgbh_RegisterPalette(paltId, pData);
 }
 
-static u32 gTextureId_dword_E13D54 = 0;
-
-
-struct SPal
-{
-    void* field_0_pOriginalData;
-    void* field_4_pNewData;
-    DWORD field_8;
-};
-static_assert(sizeof(SPal) == 0xC, "Wrong size SPal");
-
-SPal stru_E13E00[128]; // TODO: Size is probably huge
-
 STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int pal_idx, char a5)
 {
+    /*
     STexture* result = reinterpret_cast<STexture*>(malloc(sizeof(STexture)));
     if (!result)
     {
@@ -966,13 +1116,13 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
     result->field_2 = 0;
     result->field_4 = 0; // Yes, wtf ? LOBYTE(stru_E13E00[pal_idx].field_4_pNewData);
     result->field_E_width = width;
-    result->field_6 = 0;
-    result->field_8 = 0;
+    result->field_6_pal_size = 0;
+    result->field_8_locked_pixels_ptr = 0;
     result->field_C = 0;
     result->field_D = 0;
     result->field_10_height = height;
     result->field_12 = stru_E13E00[pal_idx].field_8;
-    if (a5 /*&& isAtiRagePro*/)
+    if (a5 && isAtiRagePro)
     {
         result->field_13_flags_from_SPal_field8 = 0x80u;
     }
@@ -980,13 +1130,16 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
     {
         result->field_13_flags_from_SPal_field8 = 0;
     }
-    result->field_14_data = pData;
+    result->field_14_original_pixel_data_ptr = pData;
     result->field_18_pPaltData = stru_E13E00[pal_idx].field_4_pNewData;
     result->field_1C_ptr = 0;
 
 //    return result;
-
-    return gFuncs.pgbh_RegisterTexture(width, height, pData, pal_idx, a5);
+*/
+    //std::cout << "RTEX" << std::endl;
+    auto r = gFuncs.pgbh_RegisterTexture(width, height, pData, pal_idx, a5);
+    gTextures.insert(r);
+    return r;
 }
 
 void CC gbh_ResetLights()
@@ -1002,11 +1155,10 @@ void CC gbh_SetAmbient(float a1)
     gFuncs.pgbh_SetAmbient(a1);
 }
 
-int CC gbh_SetCamera(int a1, int a2, int a3, int a4)
+int CC gbh_SetCamera(float a1, float a2, float a3, float a4)
 {
-   // __debugbreak();
-   // return 0;
-    return gFuncs.pgbh_SetCamera(a1, a2, a3, a4);
+    // This function seems to do nothing
+    return 0;
 }
 
 int CC gbh_SetColourDepth()
@@ -1017,16 +1169,30 @@ int CC gbh_SetColourDepth()
     return gFuncs.pgbh_SetColourDepth();
 }
 
-s32 CC gbh_SetWindow(int a1, int a2, int a3, int a4)
+float CC gbh_SetWindow(float left, float top, float right, float bottom)
 {
-    //__debugbreak();
-    //return a4;
-    return gFuncs.pgbh_SetWindow(a1, a2, a3, a4);
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_SetWindow(left, top, right, bottom);
+    }
+
+    gWindow_left_dword_E43E08 = left;
+    gWindow_right_dword_E43E0C = right;
+    gWindow_top_dword_E43E10 = top;
+    gWindow_bottom_dword_E43E14 = bottom;
+    gWindow_d5_dword_E13DC4 = gpVideoDriver_E13DC8->field_4_flags & 1; // TODO: Never used?
+    return bottom;
 }
 
-int CC gbh_UnlockTexture(STexture* pTexture)
+STexture* CC gbh_UnlockTexture(STexture* pTexture)
 {
-   // __debugbreak();
-    //return 0;
-    return gFuncs.pgbh_UnlockTexture(pTexture);
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_UnlockTexture(pTexture);
+    }
+
+    pTexture->field_6_pal_size = 0;
+    pTexture->field_8_locked_pixels_ptr = 0;
+    pTexture->field_13_flags_from_SPal_field8 &= 0xFEu;
+    return pTexture;
 }

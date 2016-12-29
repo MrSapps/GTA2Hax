@@ -34,7 +34,7 @@ struct S3DDevice
     DWORD field_120_context;
     D3DDEVICEDESC field_124;
     GUID field_220;
-    DWORD field_230_next_ptr;
+    struct S3DDevice* field_230_next_ptr;
     DWORD field_234_backing_buffer;
     DWORD field_238;
 };
@@ -46,9 +46,9 @@ struct SD3dStruct
 {
     SVideo* field_0_pVideoDriver;
     S3DDevice* field_4_pnext_device;
-    void* field_8_pfirst_device;
-    void* field_C_device_info_ptr;
-    void* field_10;
+    S3DDevice* field_8_pfirst_device;
+    DWORD field_C_device_id_gen;
+    DWORD field_10_num_enums;
     S3DDevice* field_14_parray;
     DWORD field_18_current_id;
     DWORD field_1C;
@@ -82,10 +82,23 @@ static DWORD gActiveTextureId_dword_2B63DF4 = 0;
 static double qword_2B60848 = 0;
 static DWORD frame_number_2B93E4C = 0;
 
+struct SGlobals
+{
+    DWORD mNumPolysDrawn;
+    DWORD mNumTextureSwaps;
+    DWORD mNumBatchFlushes;
+    DWORD mSceneTime_2B93EAC;
+
+    // Both statically set during init, cache sizes ?
+    DWORD dword_2B93EB0[12];
+    DWORD dword_2B93EE0[12];
+    DWORD g0x30Size_dword_E43F10[12]; // Cache hit counters
+};
+static SGlobals gGlobals;
+
+
 static DWORD bPointFilteringOn_E48604 = 0;
-static IDirect3DDevice3* d3ddev_dword_E485E0 = 0;
 static DWORD renderStateCache_E43E24 = 0;
-static DWORD gNumTrisDrawn_E43EA0 = 0;
 
 static SVideo* gpVideoDriver_E13DC8 = nullptr;
 static struct SD3dStruct* gD3dPtr_dword_21C85E0;
@@ -101,6 +114,12 @@ static DWORD gWindow_d5_dword_E13DC4;
 static float k1_2B638A0;
 static float gSceneTime_2B93EAC;
 
+
+static int gScreenTableSize_dword_E13DCC = 0;
+static int gScreenTable_dword_E43F40[1700];
+
+static DWORD dword_2B93E88 = 0;
+static DWORD dword_2B93E28 = 0;
 
 struct SImageTableEntry
 {
@@ -164,15 +183,30 @@ void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5)
     __debugbreak();
 }
 
-int CC MakeScreenTable(int* result, int a2, unsigned int a3)
+int* CC MakeScreenTable(int value, int elementSize, unsigned int size)
 {
     // TODO
     if (gProxyOnly)
     {
-        return gFuncs.pMakeScreenTable(result, a2, a3);
+        return gFuncs.pMakeScreenTable(value, elementSize, size);
     }
 
-    return 0;
+    int* result = 0;
+    gScreenTableSize_dword_E13DCC = size;
+    if (size)
+    {
+        result = gScreenTable_dword_E43F40;
+        do
+        {
+            *result = value;
+            value += elementSize;
+            ++result;
+            --size;
+        } while (size);
+    }
+    dword_2B93E88 = elementSize;
+    dword_2B93E28 = elementSize >> 1;
+    return result;
 }
 
 int CC gbh_AddLight(int a1)
@@ -331,9 +365,9 @@ static void SetRenderStates_E02960(int states)
             if (!result)
             {
                 renderStateCache_E43E24 = 2;
-                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1); // 27, 1
-                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE); // 19, 1
-                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_ONE); // 20, 1
+                gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1); // 27, 1
+                gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE); // 19, 1
+                gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_ONE); // 20, 1
             }
         }
         else if (states & 0x180)
@@ -348,10 +382,10 @@ static void SetRenderStates_E02960(int states)
             {
                 renderStateCache_E43E24 = 1;
 
-                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMAPBLEND, D3DTBLEND_MODULATEALPHA); // 21, 4
-                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1); // 27, 1
-                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA); // 19, 5
-                d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA); // 20, 6
+                gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAPBLEND, D3DTBLEND_MODULATEALPHA); // 21, 4
+                gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1); // 27, 1
+                gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA); // 19, 5
+                gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA); // 20, 6
             }
         }
     }
@@ -359,7 +393,7 @@ static void SetRenderStates_E02960(int states)
     {
         if (renderStateCache_E43E24)
         {
-            d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0); // 27, 0
+            gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0); // 27, 0
             renderStateCache_E43E24 = 0;
         }
     }
@@ -369,6 +403,8 @@ static STexture* pLast = nullptr;
 
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
+    return; // HACK: D3D will crash without active texture
+
     if (gProxyOnly)
     {
         return gFuncs.pgbh_DrawQuad(flags, pTexture, pVerts, baseColour);
@@ -397,8 +433,8 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                 if (!bPointFilteringOn_E48604)
                 {
                     bPointFilteringOn_E48604 = 1;
-                    d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_POINT);
-                    d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_POINT);
+                    gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_POINT);
+                    gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_POINT);
                 }
             }
             else
@@ -406,8 +442,8 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                 if (bPointFilteringOn_E48604)
                 {
                     bPointFilteringOn_E48604 = 0;
-                    d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_LINEAR);
-                    d3ddev_dword_E485E0->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_LINEAR);
+                    gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_LINEAR);
+                    gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_LINEAR);
                 }
             }
             
@@ -579,8 +615,8 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                         }
                     }
                     
-                    d3ddev_dword_E485E0->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 4, D3DDP_DONOTUPDATEEXTENTS);
-                    gNumTrisDrawn_E43EA0 += 2;
+                    gD3dPtr_dword_21C85E0->field_28_ID3D_Device->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 4, D3DDP_DONOTUPDATEEXTENTS);
+                    gNumPolysDrawn_dword_E43EA0 += 2;
 
                     return;
                 }
@@ -704,19 +740,6 @@ void CC gbh_FreeTexture(STexture* pTexture)
     gFuncs.pgbh_FreeTexture(pTexture);
 }
 
-struct SGlobals
-{
-    DWORD mNumPolysDrawn;
-    DWORD mNumTextureSwaps;
-    DWORD mNumBatchFlushes;
-    DWORD mSceneTime_2B93EAC;
-
-    // Both statically set during init, cache sizes ?
-    DWORD dword_2B93EB0[12];
-    DWORD dword_2B93EE0[12];
-    DWORD g0x30Size_dword_E43F10[12]; // Cache hit counters
-};
-
 u32* CC gbh_GetGlobals()
 {
     if (gProxyOnly)
@@ -724,20 +747,7 @@ u32* CC gbh_GetGlobals()
         return gFuncs.pgbh_GetGlobals();
     }
 
-    auto r = gFuncs.pgbh_GetGlobals();
-
-    
-    SGlobals* g = (SGlobals*)r;
-    //g->mNumPolysDrawn = 12345;
-    //g->mNumTextureSwaps = 666;
-    //g->mNumBatchFlushes = 999;
-   
-    for (int i = 0; i < 12; i++)
-    {
-        //g->dword_2B93EB0[i] = 77;
-    }
-
-    return r;
+    return (u32*)&gGlobals;
 }
 
 
@@ -766,10 +776,153 @@ int CC gbh_GetUsedCache(int a1)
     return r;
 }
 
-static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(GUID FAR* lpGuid, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC pDeviceDesc1, LPD3DDEVICEDESC pDeviceDesc2, LPVOID pContext)
+static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(
+    GUID FAR* lpGuid, 
+    LPSTR lpDeviceDescription, 
+    LPSTR lpDeviceName, 
+    LPD3DDEVICEDESC pDeviceDesc1, 
+    LPD3DDEVICEDESC pDeviceDesc2, 
+    LPVOID pContext)
 {
+    LPD3DDEVICEDESC pDeviceDesc = pDeviceDesc1;
+    auto dcmColorModel = pDeviceDesc->dcmColorModel;
+    if (dcmColorModel == 0)
+    {
+        pDeviceDesc = pDeviceDesc2;
+    }
+
+    SD3dStruct* pCtx = (SD3dStruct*)pContext;
+    if (!(pCtx->field_5C_pitchQ & pDeviceDesc->dwDeviceRenderBitDepth))
+    {
+        return 1;
+    }
+
+    const auto shadeCaps = pDeviceDesc->dpcTriCaps.dwShadeCaps;
+    if (pDeviceDesc->dcmColorModel == 1 || shadeCaps & 8)
+    {
+        if (!(shadeCaps & 8))
+        {
+            if (!(shadeCaps & 4))
+            {
+                return 1;
+            }
+
+        }
+
+        int deviceDescrptionIndex = lpDeviceDescription ? strlen(lpDeviceDescription) : 0;
+        int deviceNameIndex = lpDeviceName ? strlen(lpDeviceName) : 0;
+
+        S3DDevice* pDevice = (S3DDevice *)malloc(deviceNameIndex + deviceDescrptionIndex + 566);
+        if (!pDevice)
+        {
+            return 0;
+        }
+
+        ++pCtx->field_10_num_enums;
+
+        pDevice->field_1C = 0;
+        pDevice->field_20_flags = 0;
+        pDevice->field_230_next_ptr = 0;
+        pDevice->field_C = 0;
+        pDevice->field_10 = 0;
+        pDevice->field_14 = 0;
+        pDevice->field_18_p0x60_byte_struct = 0;
+        pDevice->field_0_id = pCtx->field_C_device_id_gen++;
+
+        auto pFirstDevice = pCtx->field_8_pfirst_device;
+        if (pFirstDevice)
+        {
+            pFirstDevice->field_230_next_ptr = pDevice;
+            pCtx->field_8_pfirst_device = pDevice;
+        }
+        else
+        {
+            pCtx->field_8_pfirst_device = pDevice;
+            pCtx->field_4_pnext_device = pDevice;
+        }
+
+        
+        pDevice->field_220 = *lpGuid;
+       
+       // pDevice->field_124.wMaxTextureBlendStages = pDeviceDesc->wMaxTextureBlendStages; //  TODO: (char *)v13 + 544; ???
+
+        pDevice->field_4_device_name = (char *)&pDevice->field_234_backing_buffer;
+
+        char* v20 = (char *)&pDevice->field_234_backing_buffer + deviceNameIndex + 1;
+        pDevice->field_8_device_description = v20;
+
+        strcpy(v20, lpDeviceDescription);
+        strcpy(pDevice->field_4_device_name, lpDeviceName);
+
+        memcpy(&pDevice->field_24_deviceDesc, pDeviceDesc1, sizeof(D3DDEVICEDESC));
+        
+        // can't see how this would work 
+        //memcpy(&pDevice->field_120_context, pContext, 0xFCu); // TODO: Actually copies to offset 0x120 the field before ??
+        memcpy(&pDevice->field_124, pDeviceDesc2, sizeof(D3DDEVICEDESC));
+
+
+        if (dcmColorModel != 0)
+        {
+            pDevice->field_20_flags |= 1u;
+        }
+
+        auto v21 = pDeviceDesc->dwDeviceZBufferBitDepth;
+
+        if (BYTE1(v21) & 4)
+        {
+            pDevice->field_20_flags |= 2;
+        }
+        else if (BYTE1(v21) & 2)
+        {
+            pDevice->field_20_flags |= 4;
+        }
+        else
+        {
+            if (!(BYTE1(v21) & 1))
+            {
+                
+            }
+            else
+            {
+                pDevice->field_20_flags |= 8;
+            }
+        }
+
+        if (pDeviceDesc->dpcTriCaps.dwDestBlendCaps & 2 && pDeviceDesc->dpcTriCaps.dwSrcBlendCaps & 2)
+        {
+            pDevice->field_20_flags |= 0x40u;
+        }
+
+        if (pDeviceDesc->dpcTriCaps.dwAlphaCmpCaps & 0x10)
+        {
+            pDevice->field_20_flags |= 0x10u;
+        }
+
+        if (pDeviceDesc->dpcTriCaps.dwTextureBlendCaps & 4)
+        {
+            pDevice->field_20_flags |= 0x20u;
+        }
+
+        if (BYTE1(pDeviceDesc->dwDevCaps) & 0x10)
+        {
+            pDevice->field_20_flags |= 0x80;
+        }
+
+        if (pDeviceDesc->dcmColorModel & 2)
+        {
+            pDevice->field_20_flags |= 1;
+        }
+
+        if (pDeviceDesc->dpcTriCaps.dwTextureFilterCaps & 0x3C)
+        {
+            pDevice->field_20_flags |= 2;
+        }
+        return 1;
+    }
+    
     return 1;
 }
+
 
 #include "detours.h"
 
@@ -812,7 +965,7 @@ SD3dStruct* D3DCreate_E01300(SVideo* pVideoDriver)
         }
 
         pd3d->field_0_pVideoDriver = pVideoDriver;
-        pd3d->field_C_device_info_ptr = (void*)1;
+        pd3d->field_C_device_id_gen = 1;
 
         DDSURFACEDESC2 surfaceDesc = {};
         surfaceDesc.dwSize = sizeof(DDSURFACEDESC2);
@@ -836,7 +989,7 @@ SD3dStruct* D3DCreate_E01300(SVideo* pVideoDriver)
 
         if (pd3d->field_24_pID3d->EnumDevices(EnumD3DDevicesCallBack_E014A0, pd3d) >= 0)
         {
-            if (pd3d->field_10)
+            if (pd3d->field_10_num_enums)
             {
                 return pd3d;
             }
@@ -880,7 +1033,6 @@ static signed int __stdcall Set3dDevice_E01B90(SD3dStruct* pContext, int id)
     auto pDevice = pContext->field_4_pnext_device;
     if (pDevice)
     {
-        /*
         while (pDevice->field_0_id != id)
         {
             pDevice = pDevice->field_230_next_ptr;
@@ -888,13 +1040,13 @@ static signed int __stdcall Set3dDevice_E01B90(SD3dStruct* pContext, int id)
             {
                 return 1;
             }
-        }*/
+        }
         pContext->field_14_parray = pDevice;
         pContext->field_18_current_id = id;
-        //result = CreateD3DDevice_E01840(pContext);
-        //if (!result)
+        if (!CreateD3DDevice_E01840(pContext))
         {
-            //result = SetDeviceDefaultRenderStates_E01A90(pContext);
+            SetDeviceDefaultRenderStates_E01A90(pContext);
+            return 0;
         }
     }
     else
@@ -909,8 +1061,8 @@ signed int Init_E02340()
     // TODO
 
     SD3dStruct* pD3d = D3DCreate_E01300(gpVideoDriver_E13DC8);
-   // gD3dPtr_dword_E485E0 = pD3d;
-   // if (Set3dDevice_E01B90(pD3d, 2) != 1)
+    gD3dPtr_dword_21C85E0 = pD3d;
+    if (Set3dDevice_E01B90(pD3d, 2) != 1)
     {
       //  __debugbreak();
     }
@@ -925,17 +1077,14 @@ s32 CC gbh_Init(int a1)
         return gFuncs.pgbh_Init(a1);
     }
 
-    /*
+    
     int result = Init_E02340();
     if (!result)
     {
         gbh_SetColourDepth();
         result = 0;
     }
-   // return result;
-   */
-    auto ret = gFuncs.pgbh_Init(a1);
-    return ret;
+    return result;
 }
 
 static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
@@ -953,8 +1102,11 @@ static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
 
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
-    HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
-    PopulateS3DFunctions(hOld, gFuncs);
+    if (gProxyOnly)
+    {
+        HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
+        PopulateS3DFunctions(hOld, gFuncs);
+    }
 
     /*
     DetourTransactionBegin();
@@ -969,29 +1121,26 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
         return gFuncs.pgbh_InitDLL(pVideoDriver);
     }
 
-    auto ret = gFuncs.pgbh_InitDLL(pVideoDriver);
-
 
     gpVideoDriver_E13DC8 = pVideoDriver;
     PopulateSVideoFunctions(pVideoDriver->field_7C_self_dll_handle, gVideoDriverFuncs);
     
-    /*
+    
     *pVideoDriver->field_84_from_initDLL->pVid_CloseScreen = gbh_CloseScreen;
     *pVideoDriver->field_84_from_initDLL->pVid_GetSurface = *gVideoDriverFuncs.pVid_GetSurface;
     *pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = *gVideoDriverFuncs.pVid_FreeSurface;
     *pVideoDriver->field_84_from_initDLL->pVid_SetMode = gbh_SetMode_E04D80;
-    */
-
-
-
-    //return 1;
-
-    return ret;
+    
+    return 1;
 }
 
 
 signed int CC gbh_InitImageTable(int tableSize)
 {
+    __debugbreak();
+
+    return gFuncs.pgbh_InitImageTable(tableSize);
+
     /*
     gpImageTable_dword_E13894 = reinterpret_cast<SImageTableEntry*>(malloc(sizeof(SImageTableEntry) * tableSize));
     if (!gpImageTable_dword_E13894)
@@ -1000,11 +1149,8 @@ signed int CC gbh_InitImageTable(int tableSize)
     }
     memset(gpImageTable_dword_E13894, 0, sizeof(SImageTableEntry) * tableSize);
     gpImageTableCount_dword_E13898 = tableSize;
+    return 0;
     */
-
-    return gFuncs.pgbh_InitImageTable(tableSize);
-
-    //return 0;
 }
 
 signed int CC gbh_LoadImage(SImage* pToLoad)
@@ -1100,17 +1246,32 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
     }
     */
     //std::cout << "RPAL" << std::endl;
-    return gFuncs.pgbh_RegisterPalette(paltId, pData);
+    if (gProxyOnly)
+    {
+        auto ret = gFuncs.pgbh_RegisterPalette(paltId, pData);
+
+        return ret;
+    }
+
+    return 0;
 }
 
 STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int pal_idx, char a5)
 {
-    /*
+    if (gProxyOnly)
+    {
+        auto r = gFuncs.pgbh_RegisterTexture(width, height, pData, pal_idx, a5);
+        return r;
+    }
+
+    
     STexture* result = reinterpret_cast<STexture*>(malloc(sizeof(STexture)));
     if (!result)
     {
         return 0;
     }
+
+    memset(result, 0, sizeof(STexture));
 
     result->field_0_id = gTextureId_dword_E13D54++;
     result->field_2 = 0;
@@ -1121,25 +1282,20 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
     result->field_C = 0;
     result->field_D = 0;
     result->field_10_height = height;
-    result->field_12 = stru_E13E00[pal_idx].field_8;
-    if (a5 && isAtiRagePro)
+   // result->field_12 = stru_E13E00[pal_idx].field_8;
+   // if (a5 && isAtiRagePro)
     {
         result->field_13_flags_from_SPal_field8 = 0x80u;
     }
-    else
+    //else
     {
         result->field_13_flags_from_SPal_field8 = 0;
     }
     result->field_14_original_pixel_data_ptr = pData;
-    result->field_18_pPaltData = stru_E13E00[pal_idx].field_4_pNewData;
+   // result->field_18_pPaltData = stru_E13E00[pal_idx].field_4_pNewData;
     result->field_1C_ptr = 0;
 
-//    return result;
-*/
-    //std::cout << "RTEX" << std::endl;
-    auto r = gFuncs.pgbh_RegisterTexture(width, height, pData, pal_idx, a5);
-    gTextures.insert(r);
-    return r;
+    return result;
 }
 
 void CC gbh_ResetLights()
@@ -1166,7 +1322,11 @@ int CC gbh_SetColourDepth()
     // TODO
     //__debugbreak();
    // return 1;
-    return gFuncs.pgbh_SetColourDepth();
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_SetColourDepth();
+    }
+    return 1;
 }
 
 float CC gbh_SetWindow(float left, float top, float right, float bottom)

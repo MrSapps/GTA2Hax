@@ -41,7 +41,7 @@ void ImGui_Impl_GTA2_Render(ImDrawData* draw_data)
 
             //idx_buffer += pcmd->ElemCount;
 
-            vtx_buffer += pcmd->ElemCount;
+            //vtx_buffer += pcmd->ElemCount;
         }
     }
 

@@ -5,13 +5,15 @@
 #include <vector>
 #include <iostream>
 #include <set>
+#include "detours.h"
 
 #define BYTEn(x, n)   (*((BYTE*)&(x)+n))
 #define BYTE1(x)   BYTEn(x,  1)
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = true;
+static bool gProxyOnly = true;      // Pass through all functions to real DLL
+static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 
 // Other
 static S3DFunctions gFuncs;
@@ -24,16 +26,16 @@ struct S3DDevice
     DWORD field_0_id;
     char* field_4_device_name;
     char* field_8_device_description;
-    DWORD field_C;
-    DWORD field_10;
-    DWORD field_14;
-    DWORD field_18_p0x60_byte_struct;
-    DWORD field_1C;
+    struct STextureFormat* field_C_first_texture_format;
+    struct STextureFormat* field_10_pFirst_TextureFormat;
+    struct SHardwareTexture* field_14_phead;
+    struct SHardwareTexture* field_18_p0x60_IDirect3dTexture2_list;
+    DWORD field_1C_num_texture_enums;
     DWORD field_20_flags;
     D3DDEVICEDESC field_24_deviceDesc;
     DWORD field_120_context;
     D3DDEVICEDESC field_124;
-    GUID field_220;
+    GUID field_220_device_guid;
     struct S3DDevice* field_230_next_ptr;
     DWORD field_234_backing_buffer;
     DWORD field_238;
@@ -51,24 +53,14 @@ struct SD3dStruct
     DWORD field_10_num_enums;
     S3DDevice* field_14_active_device;
     DWORD field_18_current_id;
-    DWORD field_1C;
-    DWORD field_20;
+    struct STextureFormat* field_1c_texture_format;
+    struct STextureFormat* field_20;
     IDirect3D3* field_24_pID3d;
     IDirect3DDevice3* field_28_ID3D_Device;
     IDirect3DViewport3* field_2C_IViewPort;
-    void* field_30_44_bytes;
-    DWORD field_34;
-    DWORD field_38;
-    DWORD field_3C;
-    DWORD field_40;
-    DWORD field_44;
-    DWORD field_48;
-    DWORD field_4C;
-    DWORD field_50;
-    DWORD field_54;
-    DWORD field_58;
+    D3DVIEWPORT2 field_30_D3DVIEWPORT2;
     DWORD field_5C_pitchQ;
-    IUnknown* field_60_IUnknown;
+    IDirectDrawSurface4* field_60_IUnknown;
 };
 static_assert(sizeof(SD3dStruct) == 0x64, "Wrong size SD3dStruct");
 
@@ -891,13 +883,13 @@ static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(
 
         ++pCtx->field_10_num_enums;
 
-        pDevice->field_1C = 0;
+        pDevice->field_1C_num_texture_enums = 0;
         pDevice->field_20_flags = 0;
         pDevice->field_230_next_ptr = 0;
-        pDevice->field_C = 0;
-        pDevice->field_10 = 0;
-        pDevice->field_14 = 0;
-        pDevice->field_18_p0x60_byte_struct = 0;
+        pDevice->field_C_first_texture_format = 0;
+        pDevice->field_10_pFirst_TextureFormat = 0;
+        pDevice->field_14_phead = 0;
+        pDevice->field_18_p0x60_IDirect3dTexture2_list = 0;
         pDevice->field_0_id = pCtx->field_C_device_id_gen++;
 
         auto pFirstDevice = pCtx->field_8_pfirst_device;
@@ -913,7 +905,7 @@ static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(
         }
 
         
-        pDevice->field_220 = *lpGuid;
+        pDevice->field_220_device_guid = *lpGuid;
        
        // pDevice->field_124.wMaxTextureBlendStages = pDeviceDesc->wMaxTextureBlendStages; //  TODO: (char *)v13 + 544; ???
 
@@ -994,39 +986,465 @@ static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(
     return 1;
 }
 
+struct STextureFormat
+{
+    DWORD field_0_enum_index;
+    DWORD field_4_dwRGBBitCount;
+    DWORD field_8_size;
+    DWORD field_C_shift;
+    DWORD field_10;
+    DWORD field_14;
+    DWORD field_18_bitcount;
+    DWORD field_1C_bitcount;
+    DWORD field_20_bitcount0;
+    DWORD field_24_bitcount1;
+    DWORD field_28_flags;
+    struct STextureFormat* field_2C_next_texture_format;
+    DWORD field_30;
+    DWORD field_34;
+    DWORD field_38;
+    DWORD field_3C;
+    DWORD field_40;
+    DWORD field_44;
+    DWORD field_48;
+    DWORD field_4C;
+    DWORD field_50;
+    DWORD field_54;
+    DWORD field_58;
+    DWORD field_5C;
+    DWORD field_60;
+    DWORD field_64;
+    DWORD field_68;
+    DWORD field_6C;
+    DWORD field_70;
+    DWORD field_74;
+    DWORD field_78;
+    DWORD field_7C;
+    DWORD field_80;
+    DWORD field_84;
+    DWORD field_88;
+    DWORD field_8C;
+    DWORD field_90;
+    DWORD field_94;
+    DWORD field_98;
+    DDPIXELFORMAT field_9C_dd_texture_format;
+};
+static_assert(sizeof(STextureFormat) == 0xBC, "Wrong size STextureFormat");
 
-#include "detours.h"
+struct SHardwareTexture
+{
+    DWORD field_0_texture_id;
+    DWORD field_4_flags;
+    DWORD field_8_bitCount;
+    DWORD field_C;
+    DWORD field_10;
+    DWORD field_14;
+    DWORD field_18;
+    DWORD field_1C;
+    DWORD field_20;
+    DWORD field_24;
+    DWORD field_28;
+    DWORD field_2C;
+    DWORD field_30;
+    DWORD field_34;
+    DWORD field_38_size;
+    DWORD field_3C_locked_pixel_data;
+    DWORD field_40_pitch;
+    WORD field_44_width;
+    WORD field_46_height;
+    struct SD3dStruct* field_48_d3d_struct;
+    struct SHardwareTexture* field_4C_pNext;
+    struct SHardwareTexture* field_50_pther;
+    IDirect3DTexture2* field_54_IDirect3dTexture2;
+    IDirectDrawSurface4* field_58_other_surface;
+    IDirectDrawSurface4* field_5C_psurface_for_texture;
+//    DWORD field_60; 
+};
+static_assert(sizeof(SHardwareTexture) == 0x60, "Wrong size SHardwareTexture");
 
-// TODO
+static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat, DDPIXELFORMAT* pDDFormat)
+{
+    // TODO
+}
+
+static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFind, DWORD flagsToMatch, bool flagsAndSizeValid)
+{
+    S3DDevice* device = pD3d->field_14_active_device;
+    for (STextureFormat* result = device->field_C_first_texture_format; result; result = result->field_2C_next_texture_format)
+    {
+        // If flagsAndSizeValid is false then look at this format, otherwise only look at it if the size and flags match the search criteria
+        if (!flagsAndSizeValid || (flagsAndSizeValid && (result->field_28_flags & flagsToMatch) && result->field_8_size == sizeToFind))
+        {
+            if (result->field_4_dwRGBBitCount == 16 || result->field_4_dwRGBBitCount == 15)
+            {
+                pD3d->field_20 = result;
+                return result;
+            }
+        }
+    }
+    return nullptr;
+}
+
+static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, int flags)
+{
+    STextureFormat* result = nullptr;
+    S3DDevice* device = pD3d->field_14_active_device;
+
+    // 0x80000000 = reverse flag, or smallest/largest first ?
+    // 0x40000000 = skip 4 sized, only valid when 0x80000000 is enabled
+
+    if (flags & 0x80000000)
+    {
+        if (!(flags & 0x40000000))
+        {
+            result = FindTextureFormatHelper(pD3d, 4, 0x8000, true);
+            if (result)
+            {
+                return result;
+            }
+        }
+
+        result = FindTextureFormatHelper(pD3d, 1, 0x8000, true);
+        if (result)
+        {
+            return result;
+        }
+
+
+        return FindTextureFormatHelper(pD3d, 0, 0, false);
+    }
+    
+
+    result = FindTextureFormatHelper(pD3d, 0, 0, false);
+    if (result)
+    {
+        return result;
+    }
+
+    result = FindTextureFormatHelper(pD3d, 1, 0x8000, true);
+    if (result)
+    {
+        return result;
+    }
+
+    return FindTextureFormatHelper(pD3d, 4, 0x8000, true);
+}
+
 static HRESULT CALLBACK EnumTextureFormatsCallBack_E05BA0(LPDDPIXELFORMAT lpDDPixFmt, LPVOID lpContext)
 {
+    S3DDevice* pDevice = (S3DDevice*)lpContext;
+    const auto flags = lpDDPixFmt->dwFlags;
+    if (!(flags & 0xC0000) && !(flags & 0x20002) && !(flags & 0x204) && flags & 0x40)
+    {
+        auto pTextureFormat = (STextureFormat *)malloc(sizeof(STextureFormat));
+        if (!pTextureFormat)
+        {
+            return 0;
+        }
+
+        ++pDevice->field_1C_num_texture_enums;
+        pTextureFormat->field_28_flags = 0;
+        pTextureFormat->field_2C_next_texture_format = 0;
+        pTextureFormat->field_0_enum_index = pDevice->field_1C_num_texture_enums;
+        auto pFirst = pDevice->field_10_pFirst_TextureFormat;
+        if (pFirst)
+        {
+            pFirst->field_2C_next_texture_format = pTextureFormat;
+            pDevice->field_10_pFirst_TextureFormat = pTextureFormat;
+        }
+        else
+        {
+            pDevice->field_10_pFirst_TextureFormat = pTextureFormat;
+            pDevice->field_C_first_texture_format = pTextureFormat;
+        }
+        
+        memcpy(&pTextureFormat->field_9C_dd_texture_format, lpDDPixFmt, sizeof(DDPIXELFORMAT));
+
+        if (lpDDPixFmt->dwFlags & 1)
+        {
+            pTextureFormat->field_28_flags |= 0x80;
+        }
+
+        OutputDebugStringA("ENUM TEXTURE FORMAT - ");
+        ConvertPixelFormat_2B55A10(pTextureFormat, lpDDPixFmt);
+    }
+    return 1;
+}
+
+static int CleanUpHelper(SD3dStruct* pRenderer)
+{
+    // TODO: Also attempts to free memory that can't be seen being assigned to anywhere
+
+    if (pRenderer->field_60_IUnknown)
+    {
+        pRenderer->field_0_pVideoDriver->field_138_Surface->DeleteAttachedSurface(0, pRenderer->field_60_IUnknown);
+        pRenderer->field_60_IUnknown->Release();
+    }
+
+    if (pRenderer->field_2C_IViewPort)
+    {
+        pRenderer->field_2C_IViewPort->Release();
+    }
+    return 1;
+}
+
+static SHardwareTexture *__stdcall TextureAlloc_2B55DA0(SD3dStruct* pD3d, int width, int height, int flags)
+{
+    STextureFormat* pTextureFormat = FindTextureFormat_2B55C60(pD3d, flags);
+    if (pTextureFormat)
+    {
+        SHardwareTexture* pMem = (SHardwareTexture *)malloc(sizeof(SHardwareTexture));
+        if (pMem)
+        {
+            pMem->field_48_d3d_struct = pD3d;
+            pMem->field_0_texture_id = 0;
+            pMem->field_4_flags = 0;
+            pMem->field_4C_pNext = 0;
+            pMem->field_50_pther = 0;
+            pMem->field_3C_locked_pixel_data = 0;
+            pMem->field_40_pitch = 0;
+            D3DDEVICEDESC hardwareCaps = {};
+            D3DDEVICEDESC softwareCaps = {};
+            hardwareCaps.dwSize = sizeof(D3DDEVICEDESC);
+            softwareCaps.dwSize = sizeof(D3DDEVICEDESC);
+            pD3d->field_28_ID3D_Device->GetCaps(&hardwareCaps, &softwareCaps);
+
+
+            DDSURFACEDESC2 surfaceDesc = {};
+            memcpy(&surfaceDesc.ddpfPixelFormat, &pTextureFormat->field_9C_dd_texture_format, sizeof(DDPIXELFORMAT));
+            surfaceDesc.dwWidth = width;
+            surfaceDesc.dwFlags |= 0x1007u;
+            surfaceDesc.dwSize = sizeof(DDSURFACEDESC2);// 124;
+            surfaceDesc.dwHeight = height;
+
+            // v21 == ?
+            if (/*v21 &&*/ flags & 2)
+            {
+                surfaceDesc.ddsCaps.dwCaps = 0x4005000;
+            }
+            else
+            {
+                surfaceDesc.ddsCaps.dwCaps = 6144;
+                pMem->field_4_flags |= 1;
+            }
+
+            pMem->field_58_other_surface = 0;
+            pMem->field_5C_psurface_for_texture = 0;
+
+            surfaceDesc.ddsCaps.dwCaps2 = 4;
+            surfaceDesc.ddsCaps.dwCaps |= 0x10;
+
+            if (pD3d->field_14_active_device->field_20_flags & 2)
+            {
+                surfaceDesc.ddsCaps.dwCaps |= 0x401008;
+                surfaceDesc.dwMipMapCount = 1;
+                surfaceDesc.dwFlags |= 0x20000u;
+            }
+
+            if (pD3d->field_0_pVideoDriver->field_120_IDDraw4->CreateSurface(&surfaceDesc, &pMem->field_5C_psurface_for_texture, 0))
+            {
+                free(pMem);
+                return 0;
+            }
+            else
+            {
+                pMem->field_5C_psurface_for_texture->QueryInterface(IID_IDirect3DTexture2, (LPVOID*)&pMem->field_54_IDirect3dTexture2);
+                if (!(flags & 2))
+                {
+                    pMem->field_4_flags |= 4;
+                }
+
+                pMem->field_44_width = width;
+                pMem->field_46_height = height;
+                pMem->field_8_bitCount = pTextureFormat->field_4_dwRGBBitCount;
+                pMem->field_C = pTextureFormat->field_24_bitcount1;
+                pMem->field_10 = 8 - pTextureFormat->field_20_bitcount0;
+
+                /*
+                // TODO: v15 == ??
+                pMem->field_14 = (unsigned __int8)*(&v15 + pTextureFormat->field_20_bitcount0);
+                pMem->field_18 = pTextureFormat->field_1C_bitcount;
+                pMem->field_1C = 16 - pTextureFormat->field_18_bitcount;
+                pMem->field_20 = (unsigned __int8)*(&v15 + pTextureFormat->field_18_bitcount);
+                pMem->field_24 = pTextureFormat->field_14;
+                pMem->field_28 = 24 - pTextureFormat->field_10;
+                pMem->field_2C = (unsigned __int8)*(&v15 + pTextureFormat->field_10);
+                pMem->field_30 = pTextureFormat->field_C_shift;
+                pMem->field_34 = 32 - pTextureFormat->field_8_size;
+                pMem->field_38_size = (unsigned __int8)*(&v15 + pTextureFormat->field_8_size);
+                */
+
+                pMem->field_4_flags |= pTextureFormat->field_28_flags & 0x8000;
+
+                auto pDevice = pD3d->field_14_active_device;
+                if (pDevice->field_14_phead)
+                {
+                    pDevice->field_18_p0x60_IDirect3dTexture2_list->field_4C_pNext = pMem;
+                    pD3d->field_14_active_device->field_18_p0x60_IDirect3dTexture2_list = pMem;
+                }
+                else
+                {
+                    pDevice->field_14_phead = pMem;
+                    pD3d->field_14_active_device->field_18_p0x60_IDirect3dTexture2_list = pMem;
+                }
+                return pMem;
+            }
+        }
+    }
+    return 0;
+}
+
+static signed int __stdcall D3dTextureSetCurrent_2B56110(SHardwareTexture *pHardwareTexture)
+{
+    SHardwareTexture* pOther = pHardwareTexture->field_50_pther;
+    if (pHardwareTexture->field_4_flags & 1
+        && pHardwareTexture->field_48_d3d_struct->field_14_active_device->field_20_flags & 1
+        && pOther == 0) // TODO: Check last conditional
+    {
+        return 1;
+    }
+    else
+    {
+        pHardwareTexture = pOther;
+        if (pHardwareTexture->field_5C_psurface_for_texture->IsLost() == DDERR_SURFACELOST)
+        {
+            pHardwareTexture->field_5C_psurface_for_texture->Restore();
+            pHardwareTexture->field_58_other_surface->PageLock(0);
+            const auto ret = pHardwareTexture->field_54_IDirect3dTexture2->Load(pHardwareTexture->field_50_pther->field_54_IDirect3dTexture2) == 1;
+            if (ret)
+            {
+                pHardwareTexture->field_58_other_surface->Unlock(0);
+            }
+            else
+            {
+                pHardwareTexture->field_58_other_surface->PageUnlock(0);
+            }
+        }
+
+        pHardwareTexture->field_48_d3d_struct->field_28_ID3D_Device->SetTexture(0,  pHardwareTexture->field_54_IDirect3dTexture2);
+        return 0;
+    }
+}
+
+static int __stdcall D3dTextureCopy_2B560E0(SHardwareTexture* pFirst, SHardwareTexture* pSecond)
+{
+    pFirst->field_58_other_surface = pSecond->field_5C_psurface_for_texture;
+    pSecond->field_50_pther = pFirst;
+    pFirst->field_50_pther = pSecond;
+    pSecond->field_4_flags |= 2;
+    pFirst->field_4_flags |= 2;
+    return 0;
+}
+
+static int __stdcall ClearTexture_E061B0(SD3dStruct* pCtx)
+{
+    pCtx->field_28_ID3D_Device->SetTexture(0, 0);
+    return 0;
+}
+
+static int __stdcall FreeD3dDThings_E016E0(SD3dStruct* pD3d)
+{
+    if (pD3d->field_18_current_id)
+    {
+        // Free texture formats
+        STextureFormat* pCurrentTextureFormat = pD3d->field_14_active_device->field_C_first_texture_format;
+        if (pCurrentTextureFormat)
+        {
+            struct STextureFormat* pTextureFormat = nullptr;
+            do
+            {
+                pTextureFormat = pCurrentTextureFormat->field_2C_next_texture_format;
+                free(pCurrentTextureFormat);
+                pCurrentTextureFormat = pTextureFormat;
+            } while (pTextureFormat);
+        }
+
+        pD3d->field_14_active_device->field_C_first_texture_format = 0;
+        pD3d->field_14_active_device->field_10_pFirst_TextureFormat = 0;
+
+        
+        // Free hardware textures
+        SHardwareTexture* pCurrentHardwareTexture = pD3d->field_14_active_device->field_14_phead;
+        if (pCurrentHardwareTexture)
+        {
+            SHardwareTexture* pHardwareTexture = nullptr;
+            do
+            {
+                pCurrentHardwareTexture->field_54_IDirect3dTexture2->Release();
+                pCurrentHardwareTexture->field_5C_psurface_for_texture->Release();
+                pHardwareTexture = pCurrentHardwareTexture->field_4C_pNext;
+                free(pCurrentHardwareTexture);
+                pCurrentHardwareTexture = pHardwareTexture;
+            } while (pHardwareTexture);
+        }
+
+        pD3d->field_14_active_device->field_14_phead = 0;
+        pD3d->field_14_active_device->field_18_p0x60_IDirect3dTexture2_list = 0;
+
+        if (pD3d->field_2C_IViewPort)
+        {
+            pD3d->field_28_ID3D_Device->DeleteViewport(pD3d->field_2C_IViewPort);
+            pD3d->field_2C_IViewPort->Release();
+            pD3d->field_2C_IViewPort = 0;
+        }
+        if (pD3d->field_28_ID3D_Device)
+        {
+            pD3d->field_28_ID3D_Device->Release();
+            pD3d->field_28_ID3D_Device = 0;
+        }
+
+        pD3d->field_18_current_id = 0;
+        pD3d->field_14_active_device = 0;
+    }
     return 0;
 }
 
 signed int __stdcall CreateD3DDevice_E01840(SD3dStruct* pRenderer)
 {
-    HRESULT hr = pRenderer->field_24_pID3d->CreateDevice(
-        pRenderer->field_14_active_device->field_220,
-        pRenderer->field_0_pVideoDriver->field_138_Surface,               // dd surface ptr
+    if (FAILED(pRenderer->field_24_pID3d->CreateDevice(
+        pRenderer->field_14_active_device->field_220_device_guid,
+        pRenderer->field_0_pVideoDriver->field_138_Surface,
         &pRenderer->field_28_ID3D_Device,
-        nullptr);
-
-    if (FAILED(hr))
+        nullptr)))
     {
-        return 1;
+        return CleanUpHelper(pRenderer);
     }
 
-    hr = pRenderer->field_24_pID3d->CreateViewport(&pRenderer->field_2C_IViewPort, nullptr);
-    if (FAILED(hr))
+    if (FAILED(pRenderer->field_24_pID3d->CreateViewport(&pRenderer->field_2C_IViewPort, nullptr)))
     {
-        return 1;
+        return CleanUpHelper(pRenderer);
     }
 
-    // TODO: Other inits
+    if (FAILED(pRenderer->field_28_ID3D_Device->AddViewport(pRenderer->field_2C_IViewPort)))
+    {
+        return CleanUpHelper(pRenderer);
+    }
+
+    if (FAILED(pRenderer->field_28_ID3D_Device->SetCurrentViewport(pRenderer->field_2C_IViewPort)))
+    {
+        return CleanUpHelper(pRenderer);
+    }
+
+    memset(&pRenderer->field_30_D3DVIEWPORT2, 0, sizeof(pRenderer->field_30_D3DVIEWPORT2));
+    pRenderer->field_30_D3DVIEWPORT2.dwSize = sizeof(pRenderer->field_30_D3DVIEWPORT2);
+    pRenderer->field_30_D3DVIEWPORT2.dwX = 0;
+    pRenderer->field_30_D3DVIEWPORT2.dwY = 0;
+    pRenderer->field_30_D3DVIEWPORT2.dwWidth = pRenderer->field_0_pVideoDriver->field_48_rect_right;
+    pRenderer->field_30_D3DVIEWPORT2.dwHeight = pRenderer->field_0_pVideoDriver->field_4C_rect_bottom;
+    pRenderer->field_30_D3DVIEWPORT2.dvClipWidth = pRenderer->field_0_pVideoDriver->field_48_rect_right;
+    pRenderer->field_30_D3DVIEWPORT2.dvClipX = pRenderer->field_0_pVideoDriver->field_48_rect_right;
+    pRenderer->field_30_D3DVIEWPORT2.dvClipY = pRenderer->field_0_pVideoDriver->field_48_rect_right;
+    pRenderer->field_30_D3DVIEWPORT2.dvMinZ = pRenderer->field_0_pVideoDriver->field_48_rect_right;
+    pRenderer->field_30_D3DVIEWPORT2.dvClipHeight = pRenderer->field_0_pVideoDriver->field_4C_rect_bottom;
+    pRenderer->field_30_D3DVIEWPORT2.dvMaxZ = 500.0f;
+
+    if (FAILED(pRenderer->field_2C_IViewPort->SetViewport2(&pRenderer->field_30_D3DVIEWPORT2)))
+    {
+        return CleanUpHelper(pRenderer);
+    }
+
     return pRenderer->field_28_ID3D_Device->EnumTextureFormats(EnumTextureFormatsCallBack_E05BA0, pRenderer->field_14_active_device) != 0;
 }
-
-decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))0x01840;
 
 SD3dStruct* D3DCreate_E01300(SVideo* pVideoDriver)
 {
@@ -1105,8 +1523,7 @@ static signed int __stdcall Set3dDevice_E01B90(SD3dStruct* pContext, int id)
 {
     if (pContext->field_18_current_id)
     {
-        // TODO
-        //FreeD3dDThings_E016E0(pContext);
+        FreeD3dDThings_E016E0(pContext);
     }
 
     auto pDevice = pContext->field_4_pnext_device;
@@ -1311,22 +1728,27 @@ static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
     return result;
 }
 
+decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))0x01840;
 
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
+    HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
+
     if (gProxyOnly)
     {
-        HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
         PopulateS3DFunctions(hOld, gFuncs);
     }
 
-    /*
-    DetourTransactionBegin();
-    DetourUpdateThread(GetCurrentThread());
-    pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))((DWORD)hOld + 0x01840);
-    DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
-    DetourTransactionCommit();
-    */
+    if (gDetours)
+    {
+        DetourTransactionBegin();
+        DetourUpdateThread(GetCurrentThread());
+
+        pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))((DWORD)hOld + 0x01840);
+        DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
+
+        DetourTransactionCommit();
+    }
 
     if (gProxyOnly)
     {

@@ -49,7 +49,7 @@ struct SD3dStruct
     S3DDevice* field_8_pfirst_device;
     DWORD field_C_device_id_gen;
     DWORD field_10_num_enums;
-    S3DDevice* field_14_parray;
+    S3DDevice* field_14_active_device;
     DWORD field_18_current_id;
     DWORD field_1C;
     DWORD field_20;
@@ -112,8 +112,18 @@ static float gWindow_bottom_dword_E43E14;
 static DWORD gWindow_d5_dword_E13DC4;
 
 static float k1_2B638A0;
-static float gSceneTime_2B93EAC;
+static float gSceneTime_2B93EAC; // SGlobals
 
+static DWORD gGpuSpecificHack_dword_2B63884 = 0;
+static DWORD gbIsAtiRagePro_dword_E13888 = 0;
+
+
+// TODO: Might contain hard coded table data for cache sizes?
+static WORD word_2B607F8[12]; // 0x2B607F8 - 0x2B60810, 12 WORDS apart
+static WORD word_2B60810[12];
+
+static DWORD dword_2B93EB0[12]; // 0x2B93EB0-0x2B93EE0, 12 DWORDs apart
+static DWORD dword_2B93EE0[12];
 
 static int gScreenTableSize_dword_E13DCC = 0;
 static int gScreenTable_dword_E43F40[1700];
@@ -171,6 +181,66 @@ STexture *__stdcall TextureCache_E01EC0(STexture *pTexture)
 void CC ConvertColourBank(s32 unknown)
 {
     // Empty/NOP in real game
+}
+
+const char *__stdcall D3dErr2String_E01000(int err)
+{
+    switch (err)
+    {
+    case D3D_OK: return "D3D_OK";
+    case D3DERR_BADMAJORVERSION: return "D3DERR_BADMAJORVERSION";
+    case D3DERR_ZBUFF_NEEDS_VIDEOMEMORY: return "D3DERR_ZBUFF_NEEDS_VIDEOMEMORY (new for DirectX 5)";
+    case D3DERR_ZBUFF_NEEDS_SYSTEMMEMORY: return "D3DERR_ZBUFF_NEEDS_SYSTEMMEMORY (new for DirectX 5)";
+    case D3DERR_VIEWPORTHASNODEVICE: return "D3DERR_VIEWPORTHASNODEVICE (new for DirectX 5)";
+    case D3DERR_VIEWPORTDATANOTSET: return "D3DERR_VIEWPORTDATANOTSET (new for DirectX 5)";
+    case D3DERR_TEXTURE_UNLOCK_FAILED: return "D3DERR_TEXTURE_UNLOCK_FAILED";
+    case D3DERR_TEXTURE_SWAP_FAILED: return "D3DERR_TEXTURE_SWAP_FAILED";
+    case D3DERR_TEXTURE_NOT_LOCKED: return "D3DERR_TEXTURE_NOT_LOCKED";
+    case D3DERR_TEXTURE_NO_SUPPORT: return "D3DERR_TEXTURE_NO_SUPPORT";
+    case D3DERR_TEXTURE_LOCKED: return "D3DERR_TEXTURE_LOCKED";
+    case D3DERR_TEXTURE_LOCK_FAILED: return "D3DERR_TEXTURE_LOCK_FAILED";
+    case D3DERR_TEXTURE_LOAD_FAILED: return "D3DERR_TEXTURE_LOAD_FAILED";
+    case D3DERR_TEXTURE_GETSURF_FAILED: return "D3DERR_TEXTURE_GETSURF_FAILED";
+    case D3DERR_TEXTURE_DESTROY_FAILED: return "D3DERR_TEXTURE_DESTROY_FAILED";
+    case D3DERR_TEXTURE_CREATE_FAILED: return "D3DERR_TEXTURE_CREATE_FAILED";
+    case D3DERR_TEXTURE_BADSIZE: return "D3DERR_TEXTURE_BADSIZE (new for DirectX 5)";
+    case D3DERR_SURFACENOTINVIDMEM: return "D3DERR_SURFACENOTINVIDMEM (new for DirectX 5)";
+    case D3DERR_SETVIEWPORTDATA_FAILED: return "D3DERR_SETVIEWPORTDATA_FAILED";
+    case D3DERR_SCENE_NOT_IN_SCENE: return "D3DERR_SCENE_NOT_IN_SCENE";
+    case D3DERR_SCENE_IN_SCENE: return "D3DERR_SCENE_IN_SCENE";
+    case D3DERR_SCENE_END_FAILED: return "D3DERR_SCENE_END_FAILED";
+    case D3DERR_SCENE_BEGIN_FAILED: return "D3DERR_SCENE_BEGIN_FAILED";
+    case D3DERR_NOVIEWPORTS: return "D3DERR_NOVIEWPORTS (new for DirectX 5)";
+    case D3DERR_NOTINBEGIN: return "D3DERR_NOTINBEGIN (new for DirectX 5)";
+    case D3DERR_NOCURRENTVIEWPORT: return "D3DERR_NOCURRENTVIEWPORT (new for DirectX 5)";
+    case D3DERR_MATRIX_SETDATA_FAILED: return "D3DERR_MATRIX_SETDATA_FAILED";
+    case D3DERR_MATRIX_GETDATA_FAILED: return "D3DERR_MATRIX_GETDATA_FAILED";
+    case D3DERR_MATRIX_DESTROY_FAILED: return "D3DERR_MATRIX_DESTROY_FAILED";
+    case D3DERR_MATRIX_CREATE_FAILED: return "D3DERR_MATRIX_CREATE_FAILED";
+    case D3DERR_MATERIAL_SETDATA_FAILED: return "D3DERR_MATERIAL_SETDATA_FAILED";
+    case D3DERR_MATERIAL_GETDATA_FAILED: return "D3DERR_MATERIAL_GETDATA_FAILED";
+    case D3DERR_MATERIAL_DESTROY_FAILED: return "D3DERR_MATERIAL_DESTROY_FAILED";
+    case D3DERR_MATERIAL_CREATE_FAILED: return "D3DERR_MATERIAL_CREATE_FAILED";
+    case D3DERR_LIGHTNOTINTHISVIEWPORT: return "D3DERR_LIGHTNOTINTHISVIEWPORT (new for DirectX 5)";
+    case D3DERR_LIGHTHASVIEWPORT: return "D3DERR_LIGHTHASVIEWPORT (new for DirectX 5)";
+    case D3DERR_LIGHT_SET_FAILED: return "D3DERR_LIGHT_SET_FAILED";
+    case D3DERR_INVALIDVERTEXTYPE: return "D3DERR_INVALIDVERTEXTYPE (new for DirectX 5)";
+    case D3DERR_INVALIDRAMPTEXTURE: return "D3DERR_INVALIDRAMPTEXTURE (new for DirectX 5)";
+    case D3DERR_INVALIDPRIMITIVETYPE: return "D3DERR_INVALIDPRIMITIVETYPE (new for DirectX 5)";
+    case D3DERR_INVALIDPALETTE: return "D3DERR_INVALIDPALETTE(new for DirectX 5)";
+    case D3DERR_INVALIDCURRENTVIEWPORT: return "D3DERR_INVALIDCURRENTVIEWPORT (new for DirectX 5)";
+    case D3DERR_INVALID_DEVICE: return "D3DERR_INVALID_DEVICE (new for DirectX 5)";
+    case D3DERR_INBEGIN: return "D3DERR_INBEGIN (new for DirectX 5)";
+    case D3DERR_INITFAILED: return "D3DERR_INITFAILED (new for DirectX 5)";
+    case D3DERR_EXECUTE_UNLOCK_FAILED: return "D3DERR_EXECUTE_UNLOCK_FAILED";
+    case D3DERR_EXECUTE_NOT_LOCKED: return "D3DERR_EXECUTE_NOT_LOCKED";
+    case D3DERR_EXECUTE_LOCKED: return "D3DERR_EXECUTE_LOCKED";
+    case D3DERR_EXECUTE_LOCK_FAILED: return "D3DERR_EXECUTE_LOCK_FAILED";
+    case D3DERR_EXECUTE_CLIPPED_FAILED: return "D3DERR_EXECUTE_CLIPPED_FAILED";
+    case D3DERR_DEVICEAGGREGATED: return "D3DERR_DEVICEAGGREGATED (new for DirectX 5)";
+    case D3DERR_BADMINORVERSION: return "D3DERR_BADMINORVERSION";
+    default: return "Unrecognized error value.";
+    }
 }
 
 int CC DrawLine(int a1, int a2, int a3, int a4, int a5)
@@ -401,6 +471,8 @@ static void SetRenderStates_E02960(int states)
 
 static STexture* pLast = nullptr;
 
+
+
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
     return; // HACK: D3D will crash without active texture
@@ -532,8 +604,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                         const float textureW = pTexture->field_E_width;
                         const float textureH = pTexture->field_10_height;
                         
-                        // GPU specific hack
-                        //if (dword_E13884)
+                        if (gGpuSpecificHack_dword_2B63884)
                         {
                             //v19 = pVerts->mVerts[0].x;
                             //floor(v19);
@@ -926,26 +997,33 @@ static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(
 
 #include "detours.h"
 
+// TODO
+static HRESULT CALLBACK EnumTextureFormatsCallBack_E05BA0(LPDDPIXELFORMAT lpDDPixFmt, LPVOID lpContext)
+{
+    return 0;
+}
+
 signed int __stdcall CreateD3DDevice_E01840(SD3dStruct* pRenderer)
 {
     HRESULT hr = pRenderer->field_24_pID3d->CreateDevice(
-        pRenderer->field_14_parray->field_220,
+        pRenderer->field_14_active_device->field_220,
         pRenderer->field_0_pVideoDriver->field_138_Surface,               // dd surface ptr
         &pRenderer->field_28_ID3D_Device,
         nullptr);
 
     if (FAILED(hr))
     {
-        return 0;
+        return 1;
     }
 
     hr = pRenderer->field_24_pID3d->CreateViewport(&pRenderer->field_2C_IViewPort, nullptr);
     if (FAILED(hr))
     {
-        return 0;
+        return 1;
     }
 
-    return 1;
+    // TODO: Other inits
+    return pRenderer->field_28_ID3D_Device->EnumTextureFormats(EnumTextureFormatsCallBack_E05BA0, pRenderer->field_14_active_device) != 0;
 }
 
 decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))0x01840;
@@ -1027,44 +1105,178 @@ static signed int __stdcall Set3dDevice_E01B90(SD3dStruct* pContext, int id)
 {
     if (pContext->field_18_current_id)
     {
+        // TODO
         //FreeD3dDThings_E016E0(pContext);
     }
 
     auto pDevice = pContext->field_4_pnext_device;
-    if (pDevice)
+    if (!pDevice)
     {
-        while (pDevice->field_0_id != id)
+        return 1;
+    }
+
+    while (pDevice->field_0_id != id)
+    {
+        pDevice = pDevice->field_230_next_ptr;
+        if (!pDevice)
         {
-            pDevice = pDevice->field_230_next_ptr;
-            if (!pDevice)
-            {
-                return 1;
-            }
+            return 1;
         }
-        pContext->field_14_parray = pDevice;
-        pContext->field_18_current_id = id;
-        if (!CreateD3DDevice_E01840(pContext))
+    }
+    pContext->field_14_active_device = pDevice;
+    pContext->field_18_current_id = id;
+
+    if (CreateD3DDevice_E01840(pContext))
+    {
+        return 1;
+    }
+    
+    SetDeviceDefaultRenderStates_E01A90(pContext);
+    return 0;
+}
+
+static int CheckIfSpecialFindGfxEnabled_E02250()
+{
+    HKEY hKey = 0;
+    DWORD Data = 1;
+    DWORD cbData = sizeof(DWORD);
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\DMA Design Ltd\\GTA2\\Screen", 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+    {
+        DWORD Type = 0;
+        if (RegQueryValueExA(hKey, "special_recognition", 0, &Type, reinterpret_cast<BYTE*>(&Data), &cbData) != ERROR_SUCCESS)
         {
-            SetDeviceDefaultRenderStates_E01A90(pContext);
-            return 0;
+            Data = 1;
+            RegSetValueExA(hKey, "special_recognition", 0, REG_DWORD, reinterpret_cast<BYTE*>(&Data), cbData);
         }
     }
     else
     {
-        return 1;
+        DWORD dwDisposition = 0;
+        if (RegCreateKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\DMA Design Ltd\\GTA2\\Screen", 0, "", 0, KEY_ALL_ACCESS, 0, &hKey, &dwDisposition) == ERROR_SUCCESS)
+        {
+            RegSetValueExA(hKey, "special_recognition", 0, REG_DWORD, reinterpret_cast<BYTE*>(&Data), cbData);
+        }
     }
-    return 0; // result
+
+    if (hKey)
+    {
+        RegCloseKey(hKey);
+    }
+
+    return Data;
 }
 
-signed int Init_E02340()
+// TODO
+static int Init2_2B51F40()
 {
-    // TODO
+    return 1;
+}
 
+static signed int Init_E02340()
+{
     SD3dStruct* pD3d = D3DCreate_E01300(gpVideoDriver_E13DC8);
     gD3dPtr_dword_21C85E0 = pD3d;
-    if (Set3dDevice_E01B90(pD3d, 2) != 1)
+    if (Set3dDevice_E01B90(pD3d, 2) != 1) // If it worked
     {
-      //  __debugbreak();
+        memset(&gpVideoDriver_E13DC8->field_1C8_device_caps, 0, sizeof(DDCAPS));
+        memset(&gpVideoDriver_E13DC8->field_344_hel_caps, 0, sizeof(DDCAPS));
+        gpVideoDriver_E13DC8->field_1C8_device_caps.dwSize = 0x17C;
+        gpVideoDriver_E13DC8->field_344_hel_caps.dwSize = 0x17C;
+        auto err = gpVideoDriver_E13DC8->field_120_IDDraw4->GetCaps(&gpVideoDriver_E13DC8->field_1C8_device_caps, &gpVideoDriver_E13DC8->field_344_hel_caps);
+        if (err)
+        {
+            D3dErr2String_E01000(err);
+        }
+
+        DDSCAPS2 ddcaps2 = {};
+        ddcaps2.dwCaps = DDSCAPS_TEXTURE;
+
+        DWORD totalMem = 0;
+        DWORD freeMem = 0;
+        gpVideoDriver_E13DC8->field_120_IDDraw4->GetAvailableVidMem(&ddcaps2, &totalMem, &freeMem);
+        auto cacheSize = totalMem >> 21;
+
+        char buffer[120] = {};
+        wsprintfA(buffer, "CacheMul = %d/VideMul %d", totalMem >> 21, totalMem);
+        OutputDebugStringA(buffer);
+
+        if (cacheSize <= 0)
+        {
+            cacheSize = 1;
+        }
+
+        if (cacheSize > 2)
+        {
+            cacheSize = 2;
+        }
+
+        if (cacheSize == 1 && gD3dPtr_dword_21C85E0->field_14_active_device->field_20_flags & 0x80)
+        {
+            cacheSize = 2;
+        }
+
+        D3DDEVICEDESC hardwareCaps = {};
+        D3DDEVICEDESC softwareCaps = {};
+        hardwareCaps.dwSize = 0xFC;
+        softwareCaps.dwSize = 0xFC;
+        gD3dPtr_dword_21C85E0->field_28_ID3D_Device->GetCaps(&hardwareCaps, &softwareCaps);
+
+        DWORD idx = 0;
+        do
+        {
+            word_2B60810[idx]  = word_2B607F8[idx] * cacheSize;
+            dword_2B93EB0[idx] = word_2B607F8[idx] * cacheSize;
+            ++idx;
+        } while (idx < 12);
+        
+        Init2_2B51F40();
+  
+        idx = 0;
+        do
+        {
+            if (word_2B607F8[idx] && !dword_2B93EE0[idx])
+            {
+                return 1;
+            }
+            ++idx;
+        } while (idx < 12);
+        
+
+        gActiveTextureId_dword_2B63DF4 = -1;
+
+        DDDEVICEIDENTIFIER deviceId = {};
+        if (CheckIfSpecialFindGfxEnabled_E02250()
+            && !gD3dPtr_dword_21C85E0->field_0_pVideoDriver->field_120_IDDraw4->GetDeviceIdentifier(&deviceId, 0))
+        {
+            if (deviceId.dwVendorId == 4818)
+            {
+                if (deviceId.dwDeviceId == 24 || deviceId.dwDeviceId == 25)
+                {
+                    // TODO
+                    //flt_2B60830 = 0;
+                    //flt_2B6082C = 0x3E800000;
+
+                    gGpuSpecificHack_dword_2B63884 = 1;
+                    OutputDebugStringA("THIS IS A RIVA");
+                    return 0;
+                }
+            }
+            else if (deviceId.dwVendorId == 4098)
+            {
+                if (deviceId.dwDeviceId == 18242)
+                {
+                    gbIsAtiRagePro_dword_E13888 = 1;
+                    OutputDebugStringA("THIS IS AN ATI_RAGEPRO");
+                    return 0;
+                }
+            }
+            else if (deviceId.dwVendorId == 4172 && deviceId.dwDeviceId == 15623)
+            {
+                gGpuSpecificHack_dword_2B63884 = 1;
+                OutputDebugStringA("THIS IS AN PERMEDIA2 (with delta)");
+            }
+        }
+        return 0;
     }
 
     return 1;
@@ -1283,11 +1495,11 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
     result->field_D = 0;
     result->field_10_height = height;
    // result->field_12 = stru_E13E00[pal_idx].field_8;
-   // if (a5 && isAtiRagePro)
+    if (a5 && gbIsAtiRagePro_dword_E13888)
     {
         result->field_13_flags_from_SPal_field8 = 0x80u;
     }
-    //else
+    else
     {
         result->field_13_flags_from_SPal_field8 = 0;
     }

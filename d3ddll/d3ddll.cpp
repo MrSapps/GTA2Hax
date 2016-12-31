@@ -12,8 +12,9 @@
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = true;      // Pass through all functions to real DLL
+static bool gProxyOnly = false;      // Pass through all functions to real DLL
 static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
+static bool gRealPtrs = true;
 
 // Other
 static S3DFunctions gFuncs;
@@ -94,7 +95,7 @@ static DWORD renderStateCache_E43E24 = 0;
 
 static SVideo* gpVideoDriver_E13DC8 = nullptr;
 static struct SD3dStruct* gD3dPtr_dword_21C85E0;
-static SPtrVideoFunctions gVideoDriverFuncs;
+static SVideoFunctions gVideoDriverFuncs;
 
 
 static float gWindow_left_dword_E43E08;
@@ -349,7 +350,7 @@ void CC gbh_CloseDLL()
 
 void CC gbh_CloseScreen(SVideo* pVideo)
 {
-    __debugbreak();
+//    __debugbreak();
 }
 
 unsigned int CC gbh_Convert16BitGraphic(int a1, unsigned int a2, WORD *a3, signed int a4)
@@ -467,7 +468,6 @@ static STexture* pLast = nullptr;
 
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
-    return; // HACK: D3D will crash without active texture
 
     if (gProxyOnly)
     {
@@ -705,7 +705,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
     // flags = 0;
 
 
-    return gFuncs.pgbh_DrawQuad(flags, pTexture, pVerts, baseColour);
+//    return gFuncs.pgbh_DrawQuad(flags, pTexture, pVerts, baseColour);
 }
 
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
@@ -727,6 +727,8 @@ s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4)
 
 void CC gbh_DrawTriangle(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
+    return;
+
     if (gProxyOnly)
     {
         return gFuncs.pgbh_DrawTriangle(flags, pTexture, pVerts, baseColour);
@@ -800,7 +802,7 @@ void CC gbh_FreeTexture(STexture* pTexture)
     // TODO: Other stuff required
    // free(pTexture);
     gTextures.erase(pTexture);
-    gFuncs.pgbh_FreeTexture(pTexture);
+    //gFuncs.pgbh_FreeTexture(pTexture);
 }
 
 u32* CC gbh_GetGlobals()
@@ -822,6 +824,7 @@ int CC gbh_GetUsedCache(int a1)
         return gFuncs.pgbh_GetUsedCache(a1);;
     }
 
+    /*
     DWORD base = (DWORD)gFuncs.hinstance;
     base += 0x13D20;
 
@@ -837,6 +840,8 @@ int CC gbh_GetUsedCache(int a1)
     int r = gFuncs.pgbh_GetUsedCache(a1);
 
     return r;
+    */
+    return 999;
 }
 
 static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(
@@ -1062,9 +1067,13 @@ struct SHardwareTexture
 };
 static_assert(sizeof(SHardwareTexture) == 0x60, "Wrong size SHardwareTexture");
 
+static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat, DDPIXELFORMAT* pDDFormat);
+decltype(&ConvertPixelFormat_2B55A10) pConvertPixelFormat_2B55A10 = (decltype(&ConvertPixelFormat_2B55A10))0x4A10;
+
 static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat, DDPIXELFORMAT* pDDFormat)
 {
-    // TODO
+    // TODO: Not impl, call real func
+    pConvertPixelFormat_2B55A10(pTextureFormat, pDDFormat);
 }
 
 static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFind, DWORD flagsToMatch, bool flagsAndSizeValid)
@@ -1720,7 +1729,7 @@ static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
 {
     pVideoDriver->field_34_active_device_id = 0;
 
-    int result = (*gVideoDriverFuncs.pVid_SetMode)(pVideoDriver, hwnd, modeId);
+    int result = (gVideoDriverFuncs.pVid_SetMode)(pVideoDriver, hwnd, modeId);
     if (!result)
     {
         result = Init_E02340();
@@ -1729,6 +1738,18 @@ static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
 }
 
 decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))0x01840;
+
+static void InstallHooks()
+{
+    DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
+    DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
+}
+
+static void RebasePtrs(DWORD baseAddr)
+{
+    pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))(baseAddr + 0x01840);
+    pConvertPixelFormat_2B55A10 = (decltype(&ConvertPixelFormat_2B55A10))(baseAddr + 0x5A10);
+}
 
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
@@ -1739,14 +1760,16 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
         PopulateS3DFunctions(hOld, gFuncs);
     }
 
+    if (gDetours || gRealPtrs)
+    {
+        RebasePtrs((DWORD)hOld);
+    }
+
     if (gDetours)
     {
         DetourTransactionBegin();
+        InstallHooks();
         DetourUpdateThread(GetCurrentThread());
-
-        pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))((DWORD)hOld + 0x01840);
-        DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
-
         DetourTransactionCommit();
     }
 
@@ -1761,8 +1784,8 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
     
     
     *pVideoDriver->field_84_from_initDLL->pVid_CloseScreen = gbh_CloseScreen;
-    *pVideoDriver->field_84_from_initDLL->pVid_GetSurface = *gVideoDriverFuncs.pVid_GetSurface;
-    *pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = *gVideoDriverFuncs.pVid_FreeSurface;
+    *pVideoDriver->field_84_from_initDLL->pVid_GetSurface = gVideoDriverFuncs.pVid_GetSurface;
+    *pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = gVideoDriverFuncs.pVid_FreeSurface;
     *pVideoDriver->field_84_from_initDLL->pVid_SetMode = gbh_SetMode_E04D80;
     
     return 1;
@@ -1773,7 +1796,11 @@ signed int CC gbh_InitImageTable(int tableSize)
 {
     __debugbreak();
 
-    return gFuncs.pgbh_InitImageTable(tableSize);
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_InitImageTable(tableSize);
+    }
+    return 0;
 
     /*
     gpImageTable_dword_E13894 = reinterpret_cast<SImageTableEntry*>(malloc(sizeof(SImageTableEntry) * tableSize));
@@ -1789,8 +1816,12 @@ signed int CC gbh_InitImageTable(int tableSize)
 
 signed int CC gbh_LoadImage(SImage* pToLoad)
 {
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_LoadImage(pToLoad);
+    }
+    return 0;
 
-    return gFuncs.pgbh_LoadImage(pToLoad);
     /*
     DWORD freeImageIndex = 0;
     if (gpImageTableCount_dword_E13898 > 0)
@@ -1935,14 +1966,19 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
 void CC gbh_ResetLights()
 {
    // __debugbreak();		a4	0	int
-
-    gFuncs.pgbh_ResetLights();
+    if (gProxyOnly)
+    {
+        gFuncs.pgbh_ResetLights();
+    }
 }
 
 void CC gbh_SetAmbient(float a1)
 {
 //    __debugbreak();
-    gFuncs.pgbh_SetAmbient(a1);
+    if (gProxyOnly)
+    {
+        gFuncs.pgbh_SetAmbient(a1);
+    }
 }
 
 int CC gbh_SetCamera(float a1, float a2, float a3, float a4)

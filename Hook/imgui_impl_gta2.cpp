@@ -19,6 +19,8 @@ STexture* gFont = nullptr;
 
 void ImGui_Impl_GTA2_Render(ImDrawData* draw_data)
 {
+    return;
+
     draw_data->DeIndexAllBuffers();
 
     for (int n = 0; n < draw_data->CmdListsCount; n++)
@@ -40,7 +42,7 @@ void ImGui_Impl_GTA2_Render(ImDrawData* draw_data)
                     vtx_buffer++;
                 }
 
-                gApi->pgbh_DrawTriangle(0, gFont, &v , 255);
+                gApi->pgbh_DrawTriangle(0, gFont, v.mVerts , 255);
             }
 
             //idx_buffer += pcmd->ElemCount;

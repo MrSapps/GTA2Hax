@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <set>
+#include <algorithm>
 #include "detours.h"
 
 #define BYTEn(x, n)   (*((BYTE*)&(x)+n))
@@ -371,39 +372,34 @@ int CC gbh_DrawFlatRect(int a1, int a2)
     return 0;
 }
 
-static bool NotClipped(Verts* pVerts)
+#undef max
+#undef min
+
+static bool NotClipped(Vert* pVerts, int count)
 {
-    float maxX = pVerts->mVerts[0].x;
-    if (maxX > pVerts->mVerts[1].x)
-        maxX = pVerts->mVerts[1].x;
-    if (maxX > pVerts->mVerts[2].x)
-        maxX = pVerts->mVerts[2].x;
-    if (maxX > pVerts->mVerts[3].x)
-        maxX = pVerts->mVerts[3].x;
+    float maxX = pVerts[0].x;
+    for (auto i = 1; i < count; i++)
+    {
+        maxX = std::max(maxX, pVerts[i].x);
+    }
 
-    float minX = pVerts->mVerts[0].x;
-    if (minX < pVerts->mVerts[1].x)
-        minX = pVerts->mVerts[1].x;
-    if (minX < pVerts->mVerts[2].x)
-        minX = pVerts->mVerts[2].x;
-    if (minX < pVerts->mVerts[3].x)
-        minX = pVerts->mVerts[3].x;
+    float minX = pVerts[0].x;
+    for (auto i = 1; i < count; i++)
+    {
+        minX = std::min(minX, pVerts[i].x);
+    }
 
-    float maxY = pVerts->mVerts[0].y;
-    if (maxY > pVerts->mVerts[1].y)
-        maxY = pVerts->mVerts[1].y;
-    if (maxY > pVerts->mVerts[2].y)
-        maxY = pVerts->mVerts[2].y;
-    if (maxY > pVerts->mVerts[3].y)
-        maxY = pVerts->mVerts[3].y;
+    float maxY = pVerts[0].y;
+    for (auto i = 1; i < count; i++)
+    {
+        maxY = std::max(maxY, pVerts[i].y);
+    }
 
-    float minY = pVerts->mVerts[0].y;
-    if (minY < pVerts->mVerts[1].y)
-        minY = pVerts->mVerts[1].y;
-    if (minY < pVerts->mVerts[2].y)
-        minY = pVerts->mVerts[2].y;
-    if (minY < pVerts->mVerts[3].y)
-        minY = pVerts->mVerts[3].y;
+    float minY = pVerts[0].y;
+    for (auto i = 1; i < count; i++)
+    {
+        minY = std::min(minY, pVerts[i].y);
+    }
 
     return (maxX <= gWindow_right_dword_E43E0C
         && minX >= gWindow_left_dword_E43E08
@@ -466,8 +462,161 @@ static STexture* pLast = nullptr;
 
 
 
+void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int diffuseColour)
+{
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_DrawTriangle(triFlags, pTexture, pVerts, diffuseColour);
+    }
+
+    if (pVerts[0].z <= 0.0f || !NotClipped(pVerts, 3))
+    {
+       // return;
+    }
+
+    SetRenderStates_E02960(triFlags);
+
+    // TODO: All duplicated in quad rendering func
+    if (triFlags & 0x20000)
+    {
+        if (!bPointFilteringOn_E48604)
+        {
+            bPointFilteringOn_E48604 = 1;
+            gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_POINT);
+            gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_POINT);
+        }
+    }
+    else
+    {
+        if (bPointFilteringOn_E48604)
+        {
+            bPointFilteringOn_E48604 = 0;
+            gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_LINEAR);
+            gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_LINEAR);
+        }
+    }
+
+    if (false)
+    //if (pTexture->field_1C_ptr)
+    {
+        /*
+        textureFlags = pTexture->field_13_flags;
+        if (!(textureFlags & 0x80))
+        {
+            goto LABEL_40;
+        }
+
+        bTextureFlag0x40 = textureFlags & 0x40;
+        if (bTextureFlag0x40 && triFlags & 0x300)
+        {
+            TextureCache_E01EC0(pTexture);
+            CacheFlushBatchRelated_2B52810(pTexture, triFlags);
+            newTextureFlags = pTexture->field_13_flags & 0xBF;
+            goto LABEL_39;
+        }
+
+        if (bTextureFlag0x40 || triFlags & 0x300)
+        {
+            goto LABEL_40;
+        }
+
+        TextureCache_E01EC0(pTexture);
+        CacheFlushBatchRelated_2B52810(pTexture, triFlags);
+        textureFlagsCopy = pTexture->field_13_flags;
+        */
+    }
+    else
+    {
+        //CacheFlushBatchRelated_2B52810(pTexture, triFlags);
+        //textureFlagsCopy = pTexture->field_13_flags;
+        
+        //if (triFlags & 0x300)
+        {
+            //newTextureFlags = textureFlagsCopy & 0xBF;
+        LABEL_39:
+            //pTexture->field_13_flags = newTextureFlags;
+        LABEL_40:
+            //pCache = pTexture->field_1C_pCache;
+            //pHardwareTexture = pCache->field_24_pInternalTexture;
+
+            /*
+            if (gActiveTextureId_dword_2B63DF4 != pHardwareTexture)
+            {
+                D3dTextureSetCurrent_2B56110(pCache->field_24_pInternalTexture);
+                gActiveTextureId_dword_2B63DF4 = pHardwareTexture;
+                ++mNumTextureSwaps_2B93EA4;
+                v14 = pCache->field_1C_pNext;
+                pCache->field_8_used_Frame_num = frame_number_2B93E4C;
+                if (v14)
+                {
+                    v15 = pCache->field_20_pCache;
+                    if (v15)
+                        v15->field_1C_pNext = v14;
+                    else
+                        gPtr_12_array_dword_E13D20[pCache->field_6_cache_idx] = v14;
+                    pCache->field_1C_pNext->field_20_pCache = pCache->field_20_pCache;
+                    cacheIdx = pCache->field_6_cache_idx;
+                    pCache->field_1C_pNext = 0;
+                    pCache->field_20_pCache = (SCache *)12_array_dword_E13D80[(unsigned __int16)cacheIdx];
+                    *(_DWORD *)(12_array_dword_E13D80[(unsigned __int16)cacheIdx] + 28) = pCache;
+                    12_array_dword_E13D80[pCache->field_6_cache_idx] = (int)pCache;
+                }
+            }
+            */
+
+            pVerts[0].w = pVerts[0].z;
+            pVerts[1].w = pVerts[1].z;
+            pVerts[2].w = pVerts[2].z;
+
+           
+            //v17 = pTexture->field_1C_pCache;
+            //auto uvScale = v17->field_C_sizeQ;
+            float uvScale = 1.0f;
+
+            pVerts[0].u *= uvScale;
+            pVerts[0].v *= uvScale;
+            pVerts[1].u *= uvScale;
+            pVerts[1].v *= uvScale;
+            pVerts[2].u *= uvScale;
+            pVerts[2].v *= uvScale;
+            
+
+            //if (!(BYTE1(triFlags) & 0x20))
+            {
+                const auto finalDiffuseColour = (unsigned __int8)diffuseColour | (((unsigned __int8)diffuseColour | ((diffuseColour | 0xFFFFFF00) << 8)) << 8);
+                pVerts[0].diff = finalDiffuseColour;
+                pVerts[1].diff = finalDiffuseColour;
+                pVerts[2].diff = finalDiffuseColour;
+            }
+
+            pVerts[0].spec = 0;
+            pVerts[1].spec = 0;
+            pVerts[2].spec = 0;
+
+            /*
+            if (BYTE1(triFlags) & 0x80 && gfAmbient_E10838 != 255.0)
+            {
+                LightVerts_2B52A80(3, pVerts, 0, diffuseColour);
+            }
+            */
+
+            if (SUCCEEDED(gD3dPtr_dword_21C85E0->field_28_ID3D_Device->DrawPrimitive(
+                D3DPT_TRIANGLELIST, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 3, D3DDP_DONOTUPDATEEXTENTS)))
+            {
+                gNumPolysDrawn_dword_E43EA0++;
+            }
+
+            return;
+        }
+    }
+
+    //newTextureFlags = textureFlagsCopy | 0x40;
+    //goto LABEL_39;
+}
+
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
 {
+    return;
 
     if (gProxyOnly)
     {
@@ -483,7 +632,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
     
     if (pVerts->mVerts[0].z > 0.0f)
     {
-        if (NotClipped(pVerts))
+        if (NotClipped(pVerts->mVerts, 4))
         {
             if (flags & 0x10000) // whatever this flag is turns point filtering on
             {
@@ -553,7 +702,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                 //sub_E02810(pTexture, flags); // set/reinit field_1C_ptr
                 //v9 = pTexture->field_13;
 
-                if (flags & 0x300) // Blending
+                //if (flags & 0x300) // Blending
                 { // else goto label_49 / skip flag changes
 
                     //v10 = v9 & 0xBF;
@@ -591,7 +740,8 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                     const auto flagsCopy = flags;
                     float uvScale = 1.0f;
                     //pVertsb = *(SVerts **)(pTexture->field_1C + 12);
-                    if (flags & 0x10000)
+                    //if (flags & 0x10000)
+                    if (false)
                     {
                         const float textureW = pTexture->field_E_width;
                         const float textureH = pTexture->field_10_height;
@@ -607,24 +757,24 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                         }
                         
 
-                        
-                        //v21 = pVerts->mVerts[0].x + textureW;
-                        //v23 = v21 - flt_E10830;
-                        //v24 = pVerts->mVerts[0].y + textureH;
+                        const float flt_E10830 = 0.0f;
+                        const auto v21 = pVerts->mVerts[0].x + textureW;
+                        const auto v23 = v21 - flt_E10830;
+                        const auto v24 = pVerts->mVerts[0].y + textureH;
                         
 
                         pVerts->mVerts[1].z = pVerts->mVerts[0].z;
                         pVerts->mVerts[2].z = pVerts->mVerts[0].z;
                         pVerts->mVerts[3].z = pVerts->mVerts[0].z;
 
-                        //pVerts->mVerts[1].x = v23;
+                        pVerts->mVerts[1].x = v23;
                         pVerts->mVerts[1].y = pVerts->mVerts[0].y;
 
-                        //pVerts->mVerts[2].x = v21 - flt_E10830;
-                        //pVerts->mVerts[2].y = v24 - flt_E10830;
+                        pVerts->mVerts[2].x = v21 - flt_E10830;
+                        pVerts->mVerts[2].y = v24 - flt_E10830;
 
                         pVerts->mVerts[3].x = pVerts->mVerts[0].x;
-                        //pVerts->mVerts[3].y = v24 - flt_E10830;
+                        pVerts->mVerts[3].y = v24 - flt_E10830;
 
                         pVerts->mVerts[0].u = 0;
                         pVerts->mVerts[0].v = 0;
@@ -655,10 +805,14 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                     pVerts->mVerts[3].u = uvScale * pVerts->mVerts[3].u;
                     pVerts->mVerts[3].v = uvScale * pVerts->mVerts[3].v;
 
-                    if (!(flagsCopy & 0x2000))
+                   // if (!(flagsCopy & 0x2000))
                     {
                         // Force RGBA to be 255, 255, 255, A
-                        const auto finalDiffuse = (unsigned __int8)baseColour | (((unsigned __int8)baseColour | ((baseColour | 0xFFFFFF00) << 8)) << 8);
+                        auto finalDiffuse = (unsigned __int8)baseColour | (((unsigned __int8)baseColour | ((baseColour | 0xFFFFFF00) << 8)) << 8);
+                        static int f = finalDiffuse;
+                        f++;
+                        finalDiffuse = f;
+
                         pVerts->mVerts[0].diff = finalDiffuse;
                         pVerts->mVerts[1].diff = finalDiffuse;
                         pVerts->mVerts[2].diff = finalDiffuse;
@@ -723,29 +877,6 @@ s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4)
         return gFuncs.pgbh_DrawTilePart(a1, a2, a3, a4);
     }
     return 0;
-}
-
-void CC gbh_DrawTriangle(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
-{
-    return;
-
-    if (gProxyOnly)
-    {
-        return gFuncs.pgbh_DrawTriangle(flags, pTexture, pVerts, baseColour);
-    }
-
-//    __debugbreak();
-    if (pTexture)
-    {
-        pLast = pTexture;
-    }
-
-    if (!pTexture)
-    {
-        pTexture = pLast;
-    }
-
-    gFuncs.pgbh_DrawTriangle(flags, pTexture, pVerts, baseColour);
 }
 
 void CC gbh_EndLevel()
@@ -1918,7 +2049,8 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
         return ret;
     }
 
-    return 0;
+    static int hack;
+    return hack++;
 }
 
 STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int pal_idx, char a5)
@@ -1948,6 +2080,8 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
     result->field_D = 0;
     result->field_10_height = height;
    // result->field_12 = stru_E13E00[pal_idx].field_8;
+    result->field_12 = 1;
+
     if (a5 && gbIsAtiRagePro_dword_E13888)
     {
         result->field_13_flags_from_SPal_field8 = 0x80u;
@@ -1958,6 +2092,7 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
     }
     result->field_14_original_pixel_data_ptr = pData;
    // result->field_18_pPaltData = stru_E13E00[pal_idx].field_4_pNewData;
+    result->field_18_pPaltData = new BYTE[result->field_E_width * result->field_10_height * 4];
     result->field_1C_ptr = 0;
 
     return result;

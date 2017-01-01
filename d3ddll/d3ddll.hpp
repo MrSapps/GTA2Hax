@@ -25,7 +25,7 @@ struct STexture
     u8 field_12;
     u8 field_13_flags_from_SPal_field8;
     void* field_14_original_pixel_data_ptr;
-    void* field_18_pPaltData;
+    BYTE* field_18_pPaltData;
     u32 field_1C_ptr; // +32 == IUnknown, DDSurface ptr ?
 };
 static_assert(sizeof(STexture) == 0x20, "Wrong sized STexture");
@@ -62,7 +62,7 @@ int CC gbh_DrawFlatRect(int a1, int a2);
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour);
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5);
 s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4);
-void CC gbh_DrawTriangle(int flags, STexture* pTexture, Verts* pVerts, int baseColour);
+void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int diffuseColour);
 void CC gbh_EndLevel();
 double CC gbh_EndScene();
 int CC gbh_FreeImageTable();

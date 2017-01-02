@@ -15,17 +15,17 @@ struct STexture
 {
     u16 field_0_id;
     u16 field_2;
-    u16 field_4;
+    u16 field_4_pal_is_trans;
     u16 field_6_pal_size;
     void* field_8_locked_pixels_ptr;
     u8 field_C;
     u8 field_D;
     u16 field_E_width;
     u16 field_10_height;
-    u8 field_12;
-    u8 field_13_flags_from_SPal_field8;
+    u8 field_12_bPalIsValid;
+    u8 field_13_flags;
     void* field_14_original_pixel_data_ptr;
-    BYTE* field_18_pPaltData;
+    WORD* field_18_pPaltData;
     u32 field_1C_ptr; // +32 == IUnknown, DDSurface ptr ?
 };
 static_assert(sizeof(STexture) == 0x20, "Wrong sized STexture");

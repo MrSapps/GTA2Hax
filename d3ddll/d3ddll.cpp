@@ -137,15 +137,22 @@ static DWORD gpImageTableCount_dword_E13898 = 0;
 
 static u32 gTextureId_dword_E13D54 = 0;
 
-struct SPal
+struct SPalData
 {
-    void* field_0_pOriginalData;
-    void* field_4_pNewData;
-    DWORD field_8;
+    DWORD* mPOriginalData;
+    WORD* mPData;
+    DWORD mbLoaded;
 };
+static_assert(sizeof(SPalData) == 0xC, "Wrong size SPalData");
 
-static_assert(sizeof(SPal) == 0xC, "Wrong size SPal");
+static SPalData pals_2B63E00[16384];
+
+/*
+
+
+
 static SPal stru_E13E00[128]; // TODO: Size is probably huge
+*/
 
 struct SCache
 {
@@ -288,7 +295,37 @@ char CC gbh_AssignPalette(STexture* pTexture, int palId)
     {
         return gFuncs.pgbh_AssignPalette(pTexture, palId);
     }
-    return 0;
+    
+    DWORD locked = 0;
+    auto oldFlags1 = pTexture->field_13_flags;
+    if (oldFlags1 & 1)
+    {
+        locked = 1;
+    }
+    else
+    {
+        pTexture->field_13_flags = oldFlags1 | 1;   // lock ?
+        pTexture->field_8_locked_pixels_ptr = pTexture->field_14_original_pixel_data_ptr;
+        pTexture->field_6_pal_size = 256;
+        TextureCache_E01EC0(pTexture);
+        locked = 0;
+    }
+
+    // actual assign pal work
+    pTexture->field_18_pPaltData = pals_2B63E00[palId].mPData;
+    auto result = pals_2B63E00[palId].mbLoaded;
+    pTexture->field_12_bPalIsValid = result;
+
+
+    if (!locked)                                // unlock  ?
+    {
+        const auto oldFlags2 = pTexture->field_13_flags;
+        pTexture->field_6_pal_size = 0;
+        result = oldFlags2 & 0xFE;
+        pTexture->field_8_locked_pixels_ptr = 0;
+        pTexture->field_13_flags = result;
+    }
+    return result;
 }
 
 void CC gbh_BeginLevel()
@@ -918,9 +955,15 @@ int CC gbh_FreeImageTable()
     return 0;
 }
 
-void CC gbh_FreePalette(int a1)
+void CC gbh_FreePalette(int palId)
 {
-//    __debugbreak();
+    if (gProxyOnly)
+    {
+        return gFuncs.pgbh_FreePalette(palId);
+    }
+
+    free(pals_2B63E00[palId].mPData);
+    pals_2B63E00[palId].mPData = 0;
 }
 
 void CC gbh_FreeTexture(STexture* pTexture)
@@ -2012,7 +2055,7 @@ STexture* CC gbh_LockTexture(STexture* pTexture)
     }
 
     pTexture->field_8_locked_pixels_ptr = pTexture->field_14_original_pixel_data_ptr;
-    pTexture->field_13_flags_from_SPal_field8 |= 1;
+    pTexture->field_13_flags |= 1;
     pTexture->field_6_pal_size = 256;
     return TextureCache_E01EC0(pTexture);
 }
@@ -2028,29 +2071,88 @@ int CC gbh_PrintBitmap(int a1, int a2)
     return 0;
 }
 
+
 unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
 {
-    // TODO
-    //__debugbreak();
-    //return 1;
-    /*
-    BYTE* data = (BYTE*)pData;
-
-    for (int i = 0; i < 64*64; i++)
-    {
-        data[i] = i;
-    }
-    */
-    //std::cout << "RPAL" << std::endl;
     if (gProxyOnly)
     {
         auto ret = gFuncs.pgbh_RegisterPalette(paltId, pData);
-
         return ret;
     }
 
-    static int hack;
-    return hack++;
+    DWORD* pOriginal = pData;
+
+    // A pass to fix up the source data
+    for (int i = 0; i < 256; i++)
+    {
+        if (i == 0)
+        {
+            *pData = 0; // colour 0 of each palette is always transparent
+        }
+        else
+        {
+            if (*pData == 0)
+            {
+                *pData = 0x10000; // Flag to mark other would be transparent stuff as not transparent?
+            }
+        }
+        pData += 64; // Pal data is stored in columns not rows
+    }
+
+    
+    WORD* pAllocatedData = (WORD *)malloc(1024u); // Space for 2 16bit pals
+
+    pals_2B63E00[paltId].mPOriginalData = pOriginal;
+    pals_2B63E00[paltId].mbLoaded = 1;
+    pals_2B63E00[paltId].mPData = pAllocatedData;
+
+    // TODO: Set for each format
+    DWORD bMask_2B60828 = 0;
+    DWORD bShift_2B93E00 = 0;
+    DWORD bShift2_2B985F0 = 0;
+
+    DWORD gMask_2B63DB4 = 0;
+    DWORD gShift_2B93E84 = 0;
+    DWORD gShift2_2B93E90 = 0;
+    
+    DWORD rMask_2B63DB8 = 0;
+    DWORD rShift_2B93E44 = 0;
+    DWORD rShift2_2B63D60 = 0;
+
+    // Set the first pal to be a 16bit converted copy of the original
+    pData = pOriginal;
+    for (int i = 0; i < 256; i++)
+    {
+        DWORD r = *pData;
+        DWORD g = *pData;
+        DWORD b = (*pData) >> bShift2_2B985F0;
+
+        pAllocatedData[i] =  (((unsigned __int16)bMask_2B60828 & (unsigned __int16)b) << bShift_2B93E00) 
+            | ((gMask_2B63DB4 & (g >> gShift_2B93E84)) << gShift2_2B93E90) 
+            | ((rMask_2B63DB8 & (r >> rShift_2B93E44)) << rShift2_2B63D60);
+
+
+        pData += 64; // Pal data is stored in columns not rows
+    }
+
+    // Set the 2nd pal to be a 16bit texture format converted copy of the original
+    WORD* pSecond = pAllocatedData + 256;
+    pData = pOriginal;
+    for (int i = 0; i < 256; i++)
+    {
+        DWORD r = *pData;
+        DWORD g = *pData;
+        DWORD b = (*pData) >> bShift2_2B985F0;
+
+        pSecond[i] = ((bMask_2B60828 & b) << bShift_2B93E00) 
+            | ((gMask_2B63DB4 & (g >> gShift_2B93E84)) << gShift2_2B93E90)
+            | ((rMask_2B63DB8 & (r >> rShift_2B93E44)) << rShift2_2B63D60);
+
+
+        pData += 64; // Pal data is stored in columns not rows
+    }
+
+    return paltId; // TODO: Func probably dosen't really return anything?
 }
 
 STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int pal_idx, char a5)
@@ -2072,27 +2174,29 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
 
     result->field_0_id = gTextureId_dword_E13D54++;
     result->field_2 = 0;
-    result->field_4 = 0; // Yes, wtf ? LOBYTE(stru_E13E00[pal_idx].field_4_pNewData);
+
+    // TODO: What does this mean, should it have a de-ref to check if contains transparent colour ??
+    result->field_4_pal_is_trans = LOBYTE(pals_2B63E00[pal_idx].mPData);
+
     result->field_E_width = width;
     result->field_6_pal_size = 0;
     result->field_8_locked_pixels_ptr = 0;
     result->field_C = 0;
     result->field_D = 0;
     result->field_10_height = height;
-   // result->field_12 = stru_E13E00[pal_idx].field_8;
-    result->field_12 = 1;
+    result->field_12_bPalIsValid =  pals_2B63E00[pal_idx].mbLoaded;
+    result->field_12_bPalIsValid = 1;
 
     if (a5 && gbIsAtiRagePro_dword_E13888)
     {
-        result->field_13_flags_from_SPal_field8 = 0x80u;
+        result->field_13_flags = 0x80u;
     }
     else
     {
-        result->field_13_flags_from_SPal_field8 = 0;
+        result->field_13_flags = 0;
     }
     result->field_14_original_pixel_data_ptr = pData;
-   // result->field_18_pPaltData = stru_E13E00[pal_idx].field_4_pNewData;
-    result->field_18_pPaltData = new BYTE[result->field_E_width * result->field_10_height * 4];
+    result->field_18_pPaltData = pals_2B63E00[pal_idx].mPData;
     result->field_1C_ptr = 0;
 
     return result;
@@ -2158,6 +2262,6 @@ STexture* CC gbh_UnlockTexture(STexture* pTexture)
 
     pTexture->field_6_pal_size = 0;
     pTexture->field_8_locked_pixels_ptr = 0;
-    pTexture->field_13_flags_from_SPal_field8 &= 0xFEu;
+    pTexture->field_13_flags &= 0xFEu;
     return pTexture;
 }

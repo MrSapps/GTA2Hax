@@ -296,34 +296,20 @@ char CC gbh_AssignPalette(STexture* pTexture, int palId)
         return gFuncs.pgbh_AssignPalette(pTexture, palId);
     }
     
-    DWORD locked = 0;
-    auto oldFlags1 = pTexture->field_13_flags;
-    if (oldFlags1 & 1)
+    bool needUnlock = false;
+    if (!(pTexture->field_13_flags & 1))
     {
-        locked = 1;
-    }
-    else
-    {
-        pTexture->field_13_flags = oldFlags1 | 1;   // lock ?
-        pTexture->field_8_locked_pixels_ptr = pTexture->field_14_original_pixel_data_ptr;
-        pTexture->field_6_pal_size = 256;
-        TextureCache_E01EC0(pTexture);
-        locked = 0;
+        gbh_LockTexture(pTexture);
+        needUnlock = true;
     }
 
-    // actual assign pal work
     pTexture->field_18_pPaltData = pals_2B63E00[palId].mPData;
-    auto result = pals_2B63E00[palId].mbLoaded;
+    const auto result = pals_2B63E00[palId].mbLoaded;
     pTexture->field_12_bPalIsValid = result;
 
-
-    if (!locked)                                // unlock  ?
+    if (needUnlock)
     {
-        const auto oldFlags2 = pTexture->field_13_flags;
-        pTexture->field_6_pal_size = 0;
-        result = oldFlags2 & 0xFE;
-        pTexture->field_8_locked_pixels_ptr = 0;
-        pTexture->field_13_flags = result;
+        gbh_UnlockTexture(pTexture);
     }
     return result;
 }
@@ -2152,7 +2138,7 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
         pData += 64; // Pal data is stored in columns not rows
     }
 
-    return paltId; // TODO: Func probably dosen't really return anything?
+    return paltId; // TODO: Func probably doesn't really return anything?
 }
 
 STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int pal_idx, char a5)

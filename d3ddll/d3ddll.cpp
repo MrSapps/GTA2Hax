@@ -125,6 +125,8 @@ static int gScreenTable_dword_E43F40[1700];
 static DWORD dword_2B93E88 = 0;
 static DWORD dword_2B93E28 = 0;
 
+
+
 struct SImageTableEntry
 {
     IDirectDrawSurface7* field_0_ddsurface;
@@ -147,12 +149,12 @@ static_assert(sizeof(SPalData) == 0xC, "Wrong size SPalData");
 
 static SPalData pals_2B63E00[16384];
 
-/*
+// Texture cache related
+struct SCache* cache_12_array_dword_E13D80[12] = {};
+struct SCache* gPtr_12_array_dword_E13D20[12] = {};
 
 
 
-static SPal stru_E13E00[128]; // TODO: Size is probably huge
-*/
 
 struct SCache
 {
@@ -166,16 +168,55 @@ struct SCache
     DWORD field_C;
     DWORD field_10;
     DWORD field_14;
-    DWORD field_18;
+    struct STexture* field_18_pSTexture;
     struct SCache* field_1C_pNext;
-    struct STexture* field_20_pTexture;
-    void* field_24_texture_id;
+    struct SCache* field_20_pCache;
+    struct SHardwareTexture* field_24_texture_id;
     DWORD field_28;
 };
 
-// TODO
 STexture *__stdcall TextureCache_E01EC0(STexture *pTexture)
 {
+    SCache* pCache = pTexture->field_1C_ptr;
+    if (pCache)
+    {
+        pCache->field_1_flags |= 0x80u;
+        
+        // Remove the active texture
+        pCache->field_18_pSTexture = nullptr;
+
+        // Set the active frame to the current frame
+        pCache->field_8_used_Frame_num = frame_number_2B93E4C - 1;
+
+        // Remove the active cache
+        pTexture->field_1C_ptr = 0;
+
+        auto p20Cache = pCache->field_20_pCache;
+        if (p20Cache)
+        {
+            // Set next free item to the no longer in use cache ?
+            p20Cache->field_1C_pNext = pCache->field_1C_pNext;
+            
+            // If there is a next item point to root?
+            auto pNext = pCache->field_1C_pNext;
+            if (pNext)
+            {
+                pNext->field_20_pCache = pCache->field_20_pCache;
+            }
+            else
+            {
+                // Otherwise this item is the root
+                cache_12_array_dword_E13D80[pCache->field_6_cache_idx] = pCache->field_20_pCache;
+            }
+
+            // Set the first item to the root of the cache list ?
+            pCache->field_1C_pNext = gPtr_12_array_dword_E13D20[pCache->field_6_cache_idx];
+
+            gPtr_12_array_dword_E13D20[pCache->field_6_cache_idx]->field_20_pCache = pCache;
+            gPtr_12_array_dword_E13D20[pCache->field_6_cache_idx] = pCache;
+            pCache->field_20_pCache = 0;
+        }
+    }
     return pTexture;
 }
 
@@ -832,9 +873,9 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Vert* pVerts, int baseColour
                     {
                         // Force RGBA to be 255, 255, 255, A
                         auto finalDiffuse = (unsigned __int8)baseColour | (((unsigned __int8)baseColour | ((baseColour | 0xFFFFFF00) << 8)) << 8);
-                        static int f = 0;// finalDiffuse;
-                        f++;
-                        finalDiffuse = f;
+                        int f = finalDiffuse;
+                       // f++;
+                        //finalDiffuse = f;
 
                         pVerts[0].diff = finalDiffuse;
                         pVerts[1].diff = finalDiffuse;
@@ -842,10 +883,10 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Vert* pVerts, int baseColour
                         pVerts[3].diff = finalDiffuse;
                     }
 
-                    pVerts[0].spec = 0;
-                    pVerts[1].spec = 0;
-                    pVerts[2].spec = 0;
-                    pVerts[3].spec = 0;
+                    pVerts[0].spec = 255;
+                    pVerts[1].spec = 255;
+                    pVerts[2].spec = 255;
+                    pVerts[3].spec = 255;
 
                     if (flagsCopy & 0x8000)
                     {
@@ -1061,33 +1102,25 @@ u32* CC gbh_GetGlobals()
     return (u32*)&gGlobals;
 }
 
-
 // Only called with do_mike / profiling debugging opt enabled
-int CC gbh_GetUsedCache(int a1)
+int CC gbh_GetUsedCache(int cacheIdx)
 {
     if (gProxyOnly)
     {
-        return gFuncs.pgbh_GetUsedCache(a1);;
+        return gFuncs.pgbh_GetUsedCache(cacheIdx);
     }
 
-    /*
-    DWORD base = (DWORD)gFuncs.hinstance;
-    base += 0x13D20;
-
-    SCache** hack = (SCache**)base;
-
-    // 12_array_dword_E13D80 int[12]
-    // gPtr_12_array_dword_E13D20 STexture*[12]
-
-    //
-
-   // __debugbreak();
-   // return 999;
-    int r = gFuncs.pgbh_GetUsedCache(a1);
-
-    return r;
-    */
-    return 999;
+    int usedCacheCount = 0;
+    SCache* pCache = gPtr_12_array_dword_E13D20[cacheIdx];
+    while (pCache)
+    {
+        if (pCache->field_8_used_Frame_num == frame_number_2B93E4C)
+        {
+            ++usedCacheCount;
+        }
+        pCache = pCache->field_1C_pNext;
+    }
+    return usedCacheCount;
 }
 
 static HRESULT WINAPI EnumD3DDevicesCallBack_E014A0(

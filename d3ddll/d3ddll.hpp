@@ -26,7 +26,7 @@ struct STexture
     u8 field_13_flags;
     void* field_14_original_pixel_data_ptr;
     WORD* field_18_pPaltData;
-    u32 field_1C_ptr; // +32 == IUnknown, DDSurface ptr ?
+    struct SCache* field_1C_ptr; // +32 == IUnknown, DDSurface ptr ?
 };
 static_assert(sizeof(STexture) == 0x20, "Wrong sized STexture");
 

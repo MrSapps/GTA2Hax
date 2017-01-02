@@ -637,9 +637,9 @@ void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int dif
     //goto LABEL_39;
 }
 
-void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColour)
+void CC gbh_DrawQuad(int flags, STexture* pTexture, Vert* pVerts, int baseColour)
 {
-    return;
+    //return;
 
     if (gProxyOnly)
     {
@@ -653,9 +653,9 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
     // 0x8000 lighting? or shadow
     // 0x2000 = use alpha in diffuse colour
     
-    if (pVerts->mVerts[0].z > 0.0f)
+    if (pVerts[0].z > 0.0f)
     {
-        if (NotClipped(pVerts->mVerts, 4))
+        //if (NotClipped(pVerts, 4))
         {
             if (flags & 0x10000) // whatever this flag is turns point filtering on
             {
@@ -781,71 +781,71 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Verts* pVerts, int baseColou
                         
 
                         const float flt_E10830 = 0.0f;
-                        const auto v21 = pVerts->mVerts[0].x + textureW;
+                        const auto v21 = pVerts[0].x + textureW;
                         const auto v23 = v21 - flt_E10830;
-                        const auto v24 = pVerts->mVerts[0].y + textureH;
+                        const auto v24 = pVerts[0].y + textureH;
                         
 
-                        pVerts->mVerts[1].z = pVerts->mVerts[0].z;
-                        pVerts->mVerts[2].z = pVerts->mVerts[0].z;
-                        pVerts->mVerts[3].z = pVerts->mVerts[0].z;
+                        pVerts[1].z = pVerts[0].z;
+                        pVerts[2].z = pVerts[0].z;
+                        pVerts[3].z = pVerts[0].z;
 
-                        pVerts->mVerts[1].x = v23;
-                        pVerts->mVerts[1].y = pVerts->mVerts[0].y;
+                        pVerts[1].x = v23;
+                        pVerts[1].y = pVerts[0].y;
 
-                        pVerts->mVerts[2].x = v21 - flt_E10830;
-                        pVerts->mVerts[2].y = v24 - flt_E10830;
+                        pVerts[2].x = v21 - flt_E10830;
+                        pVerts[2].y = v24 - flt_E10830;
 
-                        pVerts->mVerts[3].x = pVerts->mVerts[0].x;
-                        pVerts->mVerts[3].y = v24 - flt_E10830;
+                        pVerts[3].x = pVerts[0].x;
+                        pVerts[3].y = v24 - flt_E10830;
 
-                        pVerts->mVerts[0].u = 0;
-                        pVerts->mVerts[0].v = 0;
+                        pVerts[0].u = 0;
+                        pVerts[0].v = 0;
 
-                        //pVerts->mVerts[1].u = textureW - flt_E1082C;
-                        pVerts->mVerts[1].v = 0;
+                        //pVerts[1].u = textureW - flt_E1082C;
+                        pVerts[1].v = 0;
 
-                        //pVerts->mVerts[2].u = textureW - flt_E1082C;
-                        //pVerts->mVerts[2].v = textureH - flt_E1082C;
+                        //pVerts[2].u = textureW - flt_E1082C;
+                        //pVerts[2].v = textureH - flt_E1082C;
 
-                        pVerts->mVerts[3].u = 0;
-                        //pVerts->mVerts[3].v = textureH - flt_E1082C;
+                        pVerts[3].u = 0;
+                        //pVerts[3].v = textureH - flt_E1082C;
                     }
-                    pVerts->mVerts[0].w = pVerts->mVerts[0].z;
-                    pVerts->mVerts[1].w = pVerts->mVerts[1].z;
-                    pVerts->mVerts[2].w = pVerts->mVerts[2].z;
-                    pVerts->mVerts[3].w = pVerts->mVerts[3].z;
+                    pVerts[0].w = pVerts[0].z;
+                    pVerts[1].w = pVerts[1].z;
+                    pVerts[2].w = pVerts[2].z;
+                    pVerts[3].w = pVerts[3].z;
 
-                    pVerts->mVerts[0].u = uvScale * pVerts->mVerts[0].u;
-                    pVerts->mVerts[0].v = uvScale * pVerts->mVerts[0].v;
+                    pVerts[0].u = uvScale * pVerts[0].u;
+                    pVerts[0].v = uvScale * pVerts[0].v;
 
-                    pVerts->mVerts[1].u = uvScale * pVerts->mVerts[1].u;
-                    pVerts->mVerts[1].v = uvScale * pVerts->mVerts[1].v;
+                    pVerts[1].u = uvScale * pVerts[1].u;
+                    pVerts[1].v = uvScale * pVerts[1].v;
 
-                    pVerts->mVerts[2].u = uvScale * pVerts->mVerts[2].u;
-                    pVerts->mVerts[2].v = uvScale * pVerts->mVerts[2].v;
+                    pVerts[2].u = uvScale * pVerts[2].u;
+                    pVerts[2].v = uvScale * pVerts[2].v;
 
-                    pVerts->mVerts[3].u = uvScale * pVerts->mVerts[3].u;
-                    pVerts->mVerts[3].v = uvScale * pVerts->mVerts[3].v;
+                    pVerts[3].u = uvScale * pVerts[3].u;
+                    pVerts[3].v = uvScale * pVerts[3].v;
 
                    // if (!(flagsCopy & 0x2000))
                     {
                         // Force RGBA to be 255, 255, 255, A
                         auto finalDiffuse = (unsigned __int8)baseColour | (((unsigned __int8)baseColour | ((baseColour | 0xFFFFFF00) << 8)) << 8);
-                        static int f = finalDiffuse;
+                        static int f = 0;// finalDiffuse;
                         f++;
                         finalDiffuse = f;
 
-                        pVerts->mVerts[0].diff = finalDiffuse;
-                        pVerts->mVerts[1].diff = finalDiffuse;
-                        pVerts->mVerts[2].diff = finalDiffuse;
-                        pVerts->mVerts[3].diff = finalDiffuse;
+                        pVerts[0].diff = finalDiffuse;
+                        pVerts[1].diff = finalDiffuse;
+                        pVerts[2].diff = finalDiffuse;
+                        pVerts[3].diff = finalDiffuse;
                     }
 
-                    pVerts->mVerts[0].spec = 0;
-                    pVerts->mVerts[1].spec = 0;
-                    pVerts->mVerts[2].spec = 0;
-                    pVerts->mVerts[3].spec = 0;
+                    pVerts[0].spec = 0;
+                    pVerts[1].spec = 0;
+                    pVerts[2].spec = 0;
+                    pVerts[3].spec = 0;
 
                     if (flagsCopy & 0x8000)
                     {
@@ -891,14 +891,100 @@ void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
 }
 
 // Same as gbh_DrawTile
-s32 CC gbh_DrawTilePart(int a1, int a2, int a3, int a4)
+s32 CC gbh_DrawTilePart(int flags, STexture* pTexture, Vert* pData, int diffuseColour)
 {
-    //__debugbreak();
-    //return 0;
     if (gProxyOnly)
     {
-        return gFuncs.pgbh_DrawTilePart(a1, a2, a3, a4);
+        return gFuncs.pgbh_DrawTilePart(flags, pTexture, pData, diffuseColour);
     }
+
+    if (!(BYTE1(flags) & 0x40))
+    {
+        pData[0].u = 0.5f;
+        pData[0].v = 0.5f;
+        pData[1].u = 63.499901f;
+        pData[1].v = 0.5f;
+        pData[2].u = 63.499901f;
+        pData[2].v = 63.499901f;
+        pData[3].u = 0.5f;
+        pData[3].v = 63.499901f;
+    }
+    
+    flags &= 0x60u;
+
+    switch (flags)
+    {
+    case 0x20:
+    {
+        const auto u0 = pData[0].u;
+        const auto v0 = pData[0].v;
+        pData[0].u = pData[3].u;
+        pData[0].v = pData[3].v;
+        pData[3].u = pData[2].u;
+        pData[3].v = pData[2].v;
+        const auto u1 = pData[1].u;
+        pData[1].u = u0;
+        pData[2].u = u1;
+        pData[2].v = pData[1].v;
+        pData[1].v = v0;
+        break;
+    }
+    case 0x40:
+        flags ^= 0x18u;
+        break;
+    case 0x60:
+    {
+        const auto u0 = pData[0].u;
+        const auto v0 = pData[0].v;
+        pData[0].u = pData[1].u;
+        pData[0].v = pData[1].v;
+        pData[1].u = pData[2].u;
+        pData[1].v = pData[2].v;
+        const auto u3 = pData[3].u;
+        pData[3].u = u0;
+        pData[2].u = u3;
+        pData[2].v = pData[3].v;
+        pData[3].v = v0;
+        break;
+    }
+    }
+
+    if (flags & 8)
+    {
+        const auto u0 = pData[0].u;
+        const auto v0 = pData[0].v;
+        pData[0].u = pData[1].u;
+        const auto v1 = pData[1].v;
+        pData[1].u = u0;
+        pData[0].v = v1;
+        const auto v12 = pData[3].u;
+        pData[1].v = v0;
+        const auto v3 = pData[3].v;
+        const auto u2 = pData[2].u;
+        pData[2].u = v12;
+        pData[3].u = u2;
+        pData[3].v = pData[2].v;
+        pData[2].v = v3;
+    }
+
+    if (flags & 0x10)
+    {
+        const auto u0 = pData[0].u;
+        const auto v0 = pData[0].v;
+        pData[0].u = pData[3].u;
+        const auto v3 = pData[3].v;
+        pData[3].u = u0;
+        pData[0].v = v3;
+        const auto u1 = pData[1].u;
+        pData[3].v = v0;
+        const auto v1 = pData[1].v;
+        const auto u2 = pData[2].u;
+        pData[2].u = u1;
+        pData[1].u = u2;
+        pData[1].v = pData[2].v;
+        pData[2].v = v1;
+    }
+    gbh_DrawQuad(flags, pTexture, pData, diffuseColour);
     return 0;
 }
 
@@ -2117,6 +2203,8 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
             | ((gMask_2B63DB4 & (g >> gShift_2B93E84)) << gShift2_2B93E90) 
             | ((rMask_2B63DB8 & (r >> rShift_2B93E44)) << rShift2_2B63D60);
 
+        // TEMP HACK
+        pAllocatedData[i] = *pData;
 
         pData += 64; // Pal data is stored in columns not rows
     }
@@ -2134,6 +2222,8 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
             | ((gMask_2B63DB4 & (g >> gShift_2B93E84)) << gShift2_2B93E90)
             | ((rMask_2B63DB8 & (r >> rShift_2B93E44)) << rShift2_2B63D60);
 
+        // TEMP HACK
+        pAllocatedData[i] = *pData;
 
         pData += 64; // Pal data is stored in columns not rows
     }
@@ -2171,7 +2261,6 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
     result->field_D = 0;
     result->field_10_height = height;
     result->field_12_bPalIsValid =  pals_2B63E00[pal_idx].mbLoaded;
-    result->field_12_bPalIsValid = 1;
 
     if (a5 && gbIsAtiRagePro_dword_E13888)
     {

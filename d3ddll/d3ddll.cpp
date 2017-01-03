@@ -125,7 +125,8 @@ static int gScreenTable_dword_E43F40[1700];
 static DWORD dword_2B93E88 = 0;
 static DWORD dword_2B93E28 = 0;
 
-
+static DWORD numLights_2B93E38 = 0;
+static float gfAmbient_E10838 = 1.0f;
 
 struct SImageTableEntry
 {
@@ -174,6 +175,7 @@ struct SCache
     struct SHardwareTexture* field_24_texture_id;
     DWORD field_28;
 };
+// TODO: Static size check of SCache
 
 STexture *__stdcall TextureCache_E01EC0(STexture *pTexture)
 {
@@ -524,6 +526,81 @@ static void SetRenderStates_E02960(int states)
 
 static STexture* pLast = nullptr;
 
+#define HIBYTE(x)   (*((BYTE*)&(x)+1))
+
+// TODO: Where is this populated?
+static WORD word_2B607E0[12] = {};
+
+// TODO
+unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pTexture, int renderFlags)
+{
+    int biggestSide = pTexture->field_E_width;
+    if (pTexture->field_10_height >biggestSide)
+    {
+        biggestSide = pTexture->field_10_height;
+    }
+
+    auto flagsCopy = renderFlags;
+    if (renderFlags & 0x380)
+    {
+        HIBYTE(biggestSide) |= 4u;
+        flagsCopy = renderFlags | 0x80;
+    }
+
+    auto cache_index = 0;
+    while (biggestSide > word_2B607E0[cache_index])
+    {
+        if (++cache_index >= 12)
+        {
+            //cache_index = pTexture;
+            break;
+        }
+    }
+
+    auto pCache = gPtr_12_array_dword_E13D20[cache_index];
+    if (pCache->field_8_used_Frame_num == frame_number_2B93E4C)
+    {
+        ++gBatchFlushes_dword_2B93EA8;
+        gD3dPtr_dword_21C85E0->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_FLUSHBATCH, 1);
+        ++frame_number_2B93E4C;
+    }
+
+    auto pCachedTexture = pCache->field_18_pSTexture;
+
+    if (pCachedTexture)
+    {
+        pCachedTexture->field_1C_ptr = 0;
+    }
+
+    pTexture->field_1C_ptr = pCache;
+    pCache->field_0 &= 0x7FFFu;
+    pCache->field_18_pSTexture = pTexture;
+    //pPal = pTexture->field_18_pPalt;
+    //v8 = pTexture->field_C + (pTexture->field_D << 8) + pTexture->field_14_data;
+    pCache->field_10 = 0.00390625 / (double)pTexture->field_12_bPalIsValid;
+    pCache->field_14 = 0.00390625 / (double)pTexture->field_12_bPalIsValid * 255.0;
+    auto textureFlags = pTexture->field_13_flags;
+
+    /*
+    TODO
+    D3dTextureUnknown_2B561D0(
+        flagsCopy,
+        (int)pCache->field_24_pInternalTexture,
+        v8,
+        flagsCopy & 0x380 ? (pPal + 512) : pPal,
+        pTexture->field_E_width,
+        pTexture->field_10_height,
+        256,
+        flagsCopy,
+        textureFlags);
+        */
+
+    auto result = pCache->field_6_cache_idx;
+
+    ++g0x30Size_dword_E43F10[result];
+
+    return 0;
+}
 
 
 void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int diffuseColour)
@@ -591,7 +668,7 @@ void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int dif
     }
     else
     {
-        //CacheFlushBatchRelated_2B52810(pTexture, triFlags);
+        CacheFlushBatchRelated_2B52810(pTexture, triFlags);
         //textureFlagsCopy = pTexture->field_13_flags;
         
         //if (triFlags & 0x300)
@@ -678,6 +755,7 @@ void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int dif
     //goto LABEL_39;
 }
 
+
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Vert* pVerts, int baseColour)
 {
     //return;
@@ -739,7 +817,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Vert* pVerts, int baseColour
                     // Reinit field_1C_ptr?
 
                     //sub_E01EC0(pTexture);
-                    //sub_E02810(pTexture, flags);
+                    //CacheFlushBatchRelated_2B52810(pTexture, flags);
                     //v10 = pTexture->field_13 & 0xBF;
                     //pTexture->field_13_flags = v10;
                     
@@ -754,7 +832,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Vert* pVerts, int baseColour
 
                 // Reinit field_1C_ptr? But also set 0x40
                 //sub_E01EC0(pTexture);
-                //sub_E02810(pTexture, flags);
+                //CacheFlushBatchRelated_2B52810(pTexture, flags);
                 //v9 = pTexture->field_13_flags;
                 //v10 = v9 | 0x40;
                 //pTexture->field_13_flags = v10;
@@ -763,7 +841,7 @@ void CC gbh_DrawQuad(int flags, STexture* pTexture, Vert* pVerts, int baseColour
             }
             else
             {
-                //sub_E02810(pTexture, flags); // set/reinit field_1C_ptr
+                CacheFlushBatchRelated_2B52810(pTexture, flags); // set/reinit field_1C_ptr
                 //v9 = pTexture->field_13;
 
                 //if (flags & 0x300) // Blending
@@ -1871,6 +1949,18 @@ static int CheckIfSpecialFindGfxEnabled_E02250()
     return Data;
 }
 
+static SHardwareTexture *__stdcall D3DTextureAllocate_2B560A0(SD3dStruct* pd3d, int width, int height, int flags)
+{
+    return TextureAlloc_2B55DA0(pd3d, width, height, flags | 2);
+}
+
+static SHardwareTexture *__stdcall TextureAllocLocked_2B560C0(SD3dStruct* pD3d, int width, int height, int flags)
+{
+    return TextureAlloc_2B55DA0(pD3d, width, height, flags | 1);
+}
+
+
+
 // TODO
 static int Init2_2B51F40()
 {
@@ -2312,20 +2402,20 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int
 
 void CC gbh_ResetLights()
 {
-   // __debugbreak();		a4	0	int
     if (gProxyOnly)
     {
         gFuncs.pgbh_ResetLights();
     }
+    numLights_2B93E38 = 0;
 }
 
-void CC gbh_SetAmbient(float a1)
+void CC gbh_SetAmbient(float ambient)
 {
-//    __debugbreak();
     if (gProxyOnly)
     {
-        gFuncs.pgbh_SetAmbient(a1);
+        gFuncs.pgbh_SetAmbient(ambient);
     }
+    gfAmbient_E10838 = ambient * 255.0f;
 }
 
 int CC gbh_SetCamera(float a1, float a2, float a3, float a4)

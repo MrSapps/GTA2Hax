@@ -13,8 +13,8 @@
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = false;      // Pass through all functions to real DLL
-static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
+static bool gProxyOnly = true;      // Pass through all functions to real DLL
+static bool gDetours = true;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 static bool gRealPtrs = true;
 
 // Other
@@ -531,8 +531,9 @@ static STexture* pLast = nullptr;
 // TODO: Where is this populated?
 static WORD word_2B607E0[12] = {};
 
+
 // TODO
-unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pTexture, int renderFlags)
+static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pTexture, int renderFlags)
 {
     int biggestSide = pTexture->field_E_width;
     if (pTexture->field_10_height >biggestSide)
@@ -556,6 +557,8 @@ unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pTexture, in
             break;
         }
     }
+
+    return 0; // hack
 
     auto pCache = gPtr_12_array_dword_E13D20[cache_index];
     if (pCache->field_8_used_Frame_num == frame_number_2B93E4C)
@@ -2106,18 +2109,84 @@ static int CC gbh_SetMode_E04D80(SVideo* pVideoDriver, HWND hwnd, int modeId)
     return result;
 }
 
+
+static signed int __stdcall D3dTextureUnknown_2B561D0(SHardwareTexture* pHardwareTexture, BYTE* pixelData, WORD* pPalData, int textureW, int textureH, int palSize, int renderFlags, char textureFlags);
+
+decltype(&D3dTextureUnknown_2B561D0) pD3dTextureUnknown_2B561D0 = 0;
+
+
+static signed int __stdcall D3dTextureUnknown_2B561D0(SHardwareTexture* pHardwareTexture, BYTE* pixelData, WORD* pPalData, int textureW, int textureH, int palSize, int renderFlags, char textureFlags)
+{
+    SVideo* pVideoDriver = pHardwareTexture->field_48_d3d_struct->field_0_pVideoDriver;
+    memset(&pVideoDriver->field_13C_DDSurfaceDesc7, 0, sizeof(DDSURFACEDESC2));
+    pVideoDriver->field_13C_DDSurfaceDesc7.dwSize = sizeof(DDSURFACEDESC2);
+
+    if (pHardwareTexture->field_5C_psurface_for_texture->Lock(0, &pVideoDriver->field_13C_DDSurfaceDesc7, 1, 0))
+    {
+        return 1;
+    }
+
+    // TODO: Other pixel updating logic
+
+    BYTE* pPixels = (BYTE*)pVideoDriver->field_13C_DDSurfaceDesc7.lpSurface;
+    DWORD pitch = pVideoDriver->field_13C_DDSurfaceDesc7.lPitch;
+
+    for (int x = 0; x < textureH /* pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight*/; x++)
+    {
+        for (int y = 0; y <textureW /*pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth*/; y++)
+        {
+            DWORD index = (x * 2 + (y*(pitch)));
+
+            DWORD index2 = (x * 1 + (y*textureW));
+
+            WORD* p = (WORD*)(&pPixels[index]);// = pPalData[pixelData[index2]];
+            //pPixels[index + 1] = pPalData[pixelData[index2]];
+            *p = pPalData[pixelData[index2]];
+        }
+    }
+  
+
+    if (!pHardwareTexture->field_5C_psurface_for_texture->Unlock(0))
+    {
+        pHardwareTexture->field_3C_locked_pixel_data = 0;
+        pHardwareTexture->field_40_pitch = 0;
+    }
+    
+    auto field_50_pther = pHardwareTexture->field_50_pther;
+    if (field_50_pther)
+    {
+        field_50_pther->field_5C_psurface_for_texture->Restore();
+        field_50_pther->field_58_other_surface->PageLock(0);
+        auto hr = field_50_pther->field_54_IDirect3dTexture2->Load(field_50_pther->field_50_pther->field_54_IDirect3dTexture2);
+        auto v47 = field_50_pther->field_58_other_surface;
+        if (hr == 1)
+        {
+            v47->Unlock(0);
+            return 0;
+        }
+        v47->PageUnlock(0);
+    }
+
+    //return 0;
+
+    //auto ret = pD3dTextureUnknown_2B561D0(pHardwareTexture, pixelData, pPalData, textureW, textureH, palSize, renderFlags, textureFlags);
+    //return ret;
+}
+
 decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))0x01840;
 
 static void InstallHooks()
 {
-    DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
-    DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
+    //DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
+    //DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
+    DetourAttach((PVOID*)(&pD3dTextureUnknown_2B561D0), (PVOID)D3dTextureUnknown_2B561D0);
 }
 
 static void RebasePtrs(DWORD baseAddr)
 {
     pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))(baseAddr + 0x01840);
     pConvertPixelFormat_2B55A10 = (decltype(&ConvertPixelFormat_2B55A10))(baseAddr + 0x5A10);
+    pD3dTextureUnknown_2B561D0 = (decltype(&D3dTextureUnknown_2B561D0))(baseAddr + 0x61D0);
 }
 
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
@@ -2463,3 +2532,5 @@ STexture* CC gbh_UnlockTexture(STexture* pTexture)
     pTexture->field_13_flags &= 0xFEu;
     return pTexture;
 }
+
+

@@ -24,7 +24,7 @@ struct STexture
     u16 field_10_height;
     u8 field_12_bPalIsValid;
     u8 field_13_flags;
-    void* field_14_original_pixel_data_ptr;
+    BYTE* field_14_original_pixel_data_ptr;
     WORD* field_18_pPaltData;
     struct SCache* field_1C_ptr; // +32 == IUnknown, DDSurface ptr ?
 };
@@ -99,7 +99,7 @@ STexture* CC gbh_LockTexture(STexture* pTexture);
 void CC gbh_Plot(int a1, int a2, int a3, int a4);
 int CC gbh_PrintBitmap(int a1, int a2);
 unsigned int CC gbh_RegisterPalette(int a1, DWORD *a2);
-STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int a4, char a5);
+STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, BYTE* pData, int a4, char a5);
 void CC gbh_ResetLights();
 void CC gbh_SetAmbient(float a1);
 int CC gbh_SetCamera(float a1, float a2, float a3, float a4);

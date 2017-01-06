@@ -68,7 +68,7 @@ static_assert(sizeof(SD3dStruct) == 0x64, "Wrong size SD3dStruct");
 
 // From dll
 static bool gbSurfaceIsFreed_E43E18 = false;
-static DWORD g0x30Size_dword_E43F10[12] = {};
+static DWORD gCacheHitRates_dword_E43F10[12] = {};
 static DWORD gBatchFlushes_dword_2B93EA8 = 0;
 static DWORD mNumTextureSwaps_2B93EA4 = 0;
 static DWORD gNumPolysDrawn_dword_E43EA0 = 0;
@@ -384,7 +384,7 @@ int gbh_BeginScene()
     {
         gbSurfaceIsFreed_E43E18 = false;
     }
-    memset(g0x30Size_dword_E43F10, 0, sizeof(g0x30Size_dword_E43F10));
+    memset(gCacheHitRates_dword_E43F10, 0, sizeof(gCacheHitRates_dword_E43F10));
     gBatchFlushes_dword_2B93EA8 = 0;
     mNumTextureSwaps_2B93EA4 = 0;
     gNumPolysDrawn_dword_E43EA0 = 0;
@@ -535,6 +535,8 @@ static WORD word_2B607E0[12] = {};
 // TODO
 static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pTexture, int renderFlags)
 {
+    // TODO: Test this function on its own
+
     int biggestSide = pTexture->field_E_width;
     if (pTexture->field_10_height >biggestSide)
     {
@@ -558,7 +560,7 @@ static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pText
         }
     }
 
-    return 0; // hack
+    return 0; // hack, gPtr_12_array_dword_E13D20 is not yet init'ed
 
     auto pCache = gPtr_12_array_dword_E13D20[cache_index];
     if (pCache->field_8_used_Frame_num == frame_number_2B93E4C)
@@ -569,26 +571,27 @@ static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pText
     }
 
     auto pCachedTexture = pCache->field_18_pSTexture;
-
     if (pCachedTexture)
     {
         pCachedTexture->field_1C_ptr = 0;
     }
 
     pTexture->field_1C_ptr = pCache;
+
     pCache->field_0 &= 0x7FFFu;
     pCache->field_18_pSTexture = pTexture;
-    //pPal = pTexture->field_18_pPalt;
-    //v8 = pTexture->field_C + (pTexture->field_D << 8) + pTexture->field_14_data;
+    auto pPal = pTexture->field_18_pPaltData;
+    
+    // Pointer to texture pixel data TODO Why are field_C and D used? Some header data ?
+    auto v8 = pTexture->field_C + (pTexture->field_D << 8) + pTexture->field_14_original_pixel_data_ptr;
+
     pCache->field_10 = 0.00390625 / (double)pTexture->field_12_bPalIsValid;
     pCache->field_14 = 0.00390625 / (double)pTexture->field_12_bPalIsValid * 255.0;
     auto textureFlags = pTexture->field_13_flags;
 
     /*
-    TODO
     D3dTextureUnknown_2B561D0(
-        flagsCopy,
-        (int)pCache->field_24_pInternalTexture,
+        pCache->field_24_texture_id,
         v8,
         flagsCopy & 0x380 ? (pPal + 512) : pPal,
         pTexture->field_E_width,
@@ -596,11 +599,11 @@ static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pText
         256,
         flagsCopy,
         textureFlags);
-        */
+    */
 
     auto result = pCache->field_6_cache_idx;
 
-    ++g0x30Size_dword_E43F10[result];
+    ++gCacheHitRates_dword_E43F10[result];
 
     return 0;
 }
@@ -2423,7 +2426,7 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
     return paltId; // TODO: Func probably doesn't really return anything?
 }
 
-STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, void* pData, int pal_idx, char a5)
+STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, BYTE* pData, int pal_idx, char a5)
 {
     if (gProxyOnly)
     {

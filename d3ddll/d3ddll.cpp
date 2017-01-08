@@ -2145,67 +2145,41 @@ static signed int __stdcall D3dTextureUnknown_2B561D0(SHardwareTexture* pHardwar
         local_dword_2B63CF0 <<= pHardwareTexture->field_30;
     }
 
-    // TODO: Other pixel updating logic
-
     BYTE* pPixels = (BYTE*)pVideoDriver->field_13C_DDSurfaceDesc7.lpSurface;
     DWORD pitch = pVideoDriver->field_13C_DDSurfaceDesc7.lPitch;
 
 
-    for (int y = 0; y <pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth; y++)
-    {
-        for (int x = 0; x < pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight; x++)
-        {
-            DWORD surfaceIndex = (x * 2 + (y*(pitch)));
-            //pPixels[surfaceIndex] = 0;
-            //pPixels[surfaceIndex + 1] = 0;
-        }
-    }
-
     DWORD sourcePixelIndex = 0;
-    for (int y = 0; y < textureH /*pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth*/; y++)
+    for (int y = 0; y < textureH; y++)
     {
-        for (int x = 0; x < textureW /* pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight*/; x++)
+        for (int x = 0; x < textureW; x++)
         {
-            DWORD surfaceIndex = (x * 2 + (y*(pitch)));
-            BYTE palIndex = pixelData[sourcePixelIndex++];
+            const DWORD surfaceIndex = (x * 2 + (y*(pitch)));
+            const BYTE palIndex = pixelData[sourcePixelIndex++];
             WORD palValue = pPalData[palIndex];
             
-            if (palValue)
+            if (palIndex != 0)
             {
                 palValue |= local_dword_2B63CF0;
             }
-
 
             WORD* p = (WORD*)(&pPixels[surfaceIndex]);
             *p = palValue;
         }
         
-        DWORD val =  palSize - textureW;
+        const DWORD val =  palSize - textureW;
         sourcePixelIndex += val;
     }
   
-    bool missing = false;
-    if (textureW >= pHardwareTexture->field_44_width)
+
+    if (textureW < pHardwareTexture->field_44_width)
     {
-
+        // TODO: Clear remaining? Hardware texture is pre-cleared so probably don't need to?
     }
-    else
-    {
-        for (int y = 0; y < textureH; y++)
-        {
-
-        }
-
-        // TODO
-        missing = true;
-    }
-
+  
     if (textureH < pHardwareTexture->field_46_height)
     {
-       
-
-        // TODO
-        missing = true;
+        // TODO: Clear remaining? Hardware texture is pre-cleared so probably don't need to?
     }
 
     if (!pHardwareTexture->field_5C_psurface_for_texture->Unlock(0))
@@ -2220,21 +2194,15 @@ static signed int __stdcall D3dTextureUnknown_2B561D0(SHardwareTexture* pHardwar
         field_50_pther->field_5C_psurface_for_texture->Restore();
         field_50_pther->field_58_other_surface->PageLock(0);
         auto hr = field_50_pther->field_54_IDirect3dTexture2->Load(field_50_pther->field_50_pther->field_54_IDirect3dTexture2);
-        auto v47 = field_50_pther->field_58_other_surface;
+        auto pSurface = field_50_pther->field_58_other_surface;
         if (hr == 1)
         {
-            v47->Unlock(0);
+            pSurface->Unlock(0);
             return 0;
         }
-        v47->PageUnlock(0);
+        pSurface->PageUnlock(0);
     }
 
-   // if (textureW != pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth || textureH != pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight)
-    if (missing)
-    {
-        // auto ret = pD3dTextureUnknown_2B561D0(pHardwareTexture, pixelData, pPalData, textureW, textureH, palSize, renderFlags, textureFlags);
-        // return ret;
-    }
     return 0;
 }
 
@@ -2297,13 +2265,13 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 
 signed int CC gbh_InitImageTable(int tableSize)
 {
-    __debugbreak();
-
     if (gProxyOnly)
     {
         return gFuncs.pgbh_InitImageTable(tableSize);
     }
     return 0;
+
+    __debugbreak();
 
     /*
     gpImageTable_dword_E13894 = reinterpret_cast<SImageTableEntry*>(malloc(sizeof(SImageTableEntry) * tableSize));

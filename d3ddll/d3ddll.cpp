@@ -2129,25 +2129,84 @@ static signed int __stdcall D3dTextureUnknown_2B561D0(SHardwareTexture* pHardwar
         return 1;
     }
 
+    DWORD local_dword_2B63CF0 = 0;
+    if (renderFlags & 0x80)
+    {
+        // Transparent
+        local_dword_2B63CF0 = 0xFFFFFFFF >> pHardwareTexture->field_34;
+        local_dword_2B63CF0 &= pHardwareTexture->field_38_size;
+        local_dword_2B63CF0 <<= pHardwareTexture->field_30;
+    }
+    else if (renderFlags & 0x380)
+    {
+        // Semi transparent
+        local_dword_2B63CF0 = 0x88FFFFFF >> pHardwareTexture->field_34;
+        local_dword_2B63CF0 &= pHardwareTexture->field_38_size;
+        local_dword_2B63CF0 <<= pHardwareTexture->field_30;
+    }
+
     // TODO: Other pixel updating logic
 
     BYTE* pPixels = (BYTE*)pVideoDriver->field_13C_DDSurfaceDesc7.lpSurface;
     DWORD pitch = pVideoDriver->field_13C_DDSurfaceDesc7.lPitch;
 
-    for (int x = 0; x < textureH /* pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight*/; x++)
+
+    for (int y = 0; y <pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth; y++)
     {
-        for (int y = 0; y <textureW /*pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth*/; y++)
+        for (int x = 0; x < pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight; x++)
         {
-            DWORD index = (x * 2 + (y*(pitch)));
-
-            DWORD index2 = (x * 1 + (y*textureW));
-
-            WORD* p = (WORD*)(&pPixels[index]);// = pPalData[pixelData[index2]];
-            //pPixels[index + 1] = pPalData[pixelData[index2]];
-            *p = pPalData[pixelData[index2]];
+            DWORD surfaceIndex = (x * 2 + (y*(pitch)));
+            //pPixels[surfaceIndex] = 0;
+            //pPixels[surfaceIndex + 1] = 0;
         }
     }
+
+    DWORD sourcePixelIndex = 0;
+    for (int y = 0; y < textureH /*pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth*/; y++)
+    {
+        for (int x = 0; x < textureW /* pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight*/; x++)
+        {
+            DWORD surfaceIndex = (x * 2 + (y*(pitch)));
+            BYTE palIndex = pixelData[sourcePixelIndex++];
+            WORD palValue = pPalData[palIndex];
+            
+            if (palValue)
+            {
+                palValue |= local_dword_2B63CF0;
+            }
+
+
+            WORD* p = (WORD*)(&pPixels[surfaceIndex]);
+            *p = palValue;
+        }
+        
+        DWORD val =  palSize - textureW;
+        sourcePixelIndex += val;
+    }
   
+    bool missing = false;
+    if (textureW >= pHardwareTexture->field_44_width)
+    {
+
+    }
+    else
+    {
+        for (int y = 0; y < textureH; y++)
+        {
+
+        }
+
+        // TODO
+        missing = true;
+    }
+
+    if (textureH < pHardwareTexture->field_46_height)
+    {
+       
+
+        // TODO
+        missing = true;
+    }
 
     if (!pHardwareTexture->field_5C_psurface_for_texture->Unlock(0))
     {
@@ -2170,10 +2229,13 @@ static signed int __stdcall D3dTextureUnknown_2B561D0(SHardwareTexture* pHardwar
         v47->PageUnlock(0);
     }
 
-    //return 0;
-
-    //auto ret = pD3dTextureUnknown_2B561D0(pHardwareTexture, pixelData, pPalData, textureW, textureH, palSize, renderFlags, textureFlags);
-    //return ret;
+   // if (textureW != pVideoDriver->field_13C_DDSurfaceDesc7.dwWidth || textureH != pVideoDriver->field_13C_DDSurfaceDesc7.dwHeight)
+    if (missing)
+    {
+        // auto ret = pD3dTextureUnknown_2B561D0(pHardwareTexture, pixelData, pPalData, textureW, textureH, palSize, renderFlags, textureFlags);
+        // return ret;
+    }
+    return 0;
 }
 
 decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))0x01840;

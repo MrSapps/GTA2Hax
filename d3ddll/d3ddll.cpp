@@ -178,7 +178,7 @@ struct SCache
     WORD field_4;
     WORD field_6_cache_idx;
     DWORD field_8_used_Frame_num;
-    DWORD field_C;
+    float field_C;
     DWORD field_10;
     DWORD field_14;
     struct STexture* field_18_pSTexture;
@@ -410,7 +410,7 @@ int gbh_BeginScene()
     gBatchFlushes_dword_2B93EA8 = 0;
     mNumTextureSwaps_2B93EA4 = 0;
     gNumPolysDrawn_dword_E43EA0 = 0;
-    (*gActiveTextureId_dword_2B63DF4) = nullptr;// -1;
+    (*gActiveTextureId_dword_2B63DF4) = (SHardwareTexture*)-1;
     qword_2B60848 = 0i64;
     ++frame_number_2B93E4C;
     return DeviceBeginScene_E01BF0((*gD3dPtr_dword_21C85E0));
@@ -786,9 +786,27 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
 {
     //return;
 
+    Vert backUp[4];
+    for (int i = 0; i < 4; i++)
+    {
+        backUp[i] = pVerts[i];
+    }
+    // gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
+
+    Vert theirCopy[4];
+    for (int i = 0; i < 4; i++)
+    {
+        theirCopy[i] = pVerts[i];
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+        pVerts[i] = backUp[i];
+    }
+
     if (gProxyOnly)
     {
-      //  return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
+        //  return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
     }
 
     // Flags meanings:
@@ -797,217 +815,223 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
     // 0x300 = alpha blending, 0x80 picks sub blending mode
     // 0x8000 lighting? or shadow
     // 0x2000 = use alpha in diffuse colour
-    if (pVerts[0].z > 0.0f)
+    if (pVerts[0].z <= 0.0f)
     {
-        //if (NotClipped(pVerts, 4)) // TODO: Fix clipping check
+        return;
+    }
+
+    /*
+    if (NotClipped(pVerts, 4)) // TODO: Fix clipping check
+    {
+        return;
+    }
+    */
+
+    if (quadFlags & 0x10000) // whatever this flag is turns point filtering on
+    {
+        quadFlags |= 0x20000;
+    }
+
+    SetRenderStates_E02960(quadFlags);
+
+    if (quadFlags & 0x20000)
+    {
+        if (!bPointFilteringOn_E48604)
         {
-            if (quadFlags & 0x10000) // whatever this flag is turns point filtering on
-            {
-                quadFlags |= 0x20000;
-            }
+            bPointFilteringOn_E48604 = 1;
+            (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_POINT);
+            (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_POINT);
+        }
+    }
+    else
+    {
+        if (bPointFilteringOn_E48604)
+        {
+            bPointFilteringOn_E48604 = 0;
+            (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_LINEAR);
+            (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_LINEAR);
+        }
+    }
 
-            SetRenderStates_E02960(quadFlags);
-
-            if (quadFlags & 0x20000)
+    if (pTexture->field_1C_ptr)
+    {
+        if (pTexture->field_13_flags & 0x80)
+        {
+            if (pTexture->field_13_flags & 0x40 && quadFlags & 0x300)
             {
-                if (!bPointFilteringOn_E48604)
-                {
-                    bPointFilteringOn_E48604 = 1;
-                    (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_POINT);
-                    (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_POINT);
-                }
-            }
-            else
-            {
-                if (bPointFilteringOn_E48604)
-                {
-                    bPointFilteringOn_E48604 = 0;
-                    (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_LINEAR);
-                    (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_LINEAR);
-                }
-            }
-
-            if (pTexture->field_1C_ptr)
-            {
-                if (!(pTexture->field_13_flags & 0x80))
-                {
-                    //  goto LABEL_50;
-                }
-                else
-                {
-                    const auto v12 = pTexture->field_13_flags & 0x40;
-                    if (v12 && quadFlags & 0x300)
-                    {
-                        TextureCache_E01EC0(pTexture);
-                        CacheFlushBatchRelated_2B52810(pTexture, quadFlags);
-                        auto v10 = pTexture->field_13_flags & 0xBF;
-                        // goto LABEL_49;
-                        pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
-                    }
-
-                    if (v12 || quadFlags & 0x300)
-                    {
-                        //goto LABEL_50;
-                    }
-                    else
-                    {
-                        TextureCache_E01EC0(pTexture);
-                        CacheFlushBatchRelated_2B52810(pTexture, quadFlags);
-                        auto v9 = pTexture->field_13_flags;
-
-                        auto v10 = v9 | 0x40;
-                        //goto LABEL_49;
-                        pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
-                    }
-                }
-            }
-            else
-            {
+                TextureCache_E01EC0(pTexture);
                 CacheFlushBatchRelated_2B52810(pTexture, quadFlags);
-                auto v9 = pTexture->field_13_flags;
-                if (quadFlags & 0x300)                // 0x300 = textured ?
-                {
-                    auto v10 = v9 & 0xBF;
-                //LABEL_49:
-                    pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
-
-                }
-
-            //LABEL_50:
-
-                const auto pTextureCache = pTexture->field_1C_ptr;
-                const auto pHardwareTexture = pTextureCache->field_24_texture_id;
-                if ((*gActiveTextureId_dword_2B63DF4) != pHardwareTexture)
-                {
-                    D3dTextureSetCurrent_2B56110(pTextureCache->field_24_texture_id);
-                    (*gActiveTextureId_dword_2B63DF4) = pHardwareTexture;
-                    ++mNumTextureSwaps_2B93EA4;
-                    const auto v15 = pTextureCache->field_1C_pNext;
-                    pTextureCache->field_8_used_Frame_num = frame_number_2B93E4C;
-                    if (v15)
-                    {
-                        auto pCache = pTextureCache->field_20_pCache;
-
-                        if (pCache)
-                        {
-                            pCache->field_1C_pNext = v15;
-                        }
-                        else
-                        {
-                            gPtr_12_array_dword_E13D20[pTextureCache->field_6_cache_idx] = v15;
-                        }
-
-                        pTextureCache->field_1C_pNext->field_20_pCache = pTextureCache->field_20_pCache;
-                        const auto cacheIdx = pTextureCache->field_6_cache_idx;
-                        pTextureCache->field_1C_pNext = 0;
-                        pTextureCache->field_20_pCache = cache_12_array_dword_E13D80[cacheIdx];
-                        cache_12_array_dword_E13D80[cacheIdx]->field_1C_pNext = pTextureCache;
-                        cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = pTextureCache;
-                    }
-                }
-
-                const auto flagsCopy = quadFlags;
-                float uvScale = 1.0f;
-                if (quadFlags & 0x10000)
-                    //if (false)
-                {
-                    const float textureW = pTexture->field_E_width;
-                    const float textureH = pTexture->field_10_height;
-
-                    if (gGpuSpecificHack_dword_2B63884)
-                    {
-                        //v19 = pVerts->mVerts[0].x;
-                        //floor(v19);
-                        //pVerts->mVerts[0].x = v19;
-                        //v20 = pVerts->mVerts[0].y;
-                        //floor(v20);
-                        //pVerts->mVerts[0].y = v20;
-                    }
-
-
-                    const float flt_E10830 = 0.0f;
-                    const auto v21 = pVerts[0].x + textureW;
-                    const auto v23 = v21 - flt_E10830;
-                    const auto v24 = pVerts[0].y + textureH;
-
-
-                    pVerts[1].z = pVerts[0].z;
-                    pVerts[2].z = pVerts[0].z;
-                    pVerts[3].z = pVerts[0].z;
-
-                    pVerts[1].x = v23;
-                    pVerts[1].y = pVerts[0].y;
-
-                    pVerts[2].x = v21 - flt_E10830;
-                    pVerts[2].y = v24 - flt_E10830;
-
-                    pVerts[3].x = pVerts[0].x;
-                    pVerts[3].y = v24 - flt_E10830;
-
-                    pVerts[0].u = 0;
-                    pVerts[0].v = 0;
-
-                    float flt_E1082C = 0.25f; // or 0, TODO: Set me in init
-
-                    pVerts[1].u = textureW - flt_E1082C;
-                    pVerts[1].v = 0;
-
-                    pVerts[2].u = textureW - flt_E1082C;
-                    pVerts[2].v = textureH - flt_E1082C;
-
-                    pVerts[3].u = 0;
-                    pVerts[3].v = textureH - flt_E1082C;
-                }
-
-                pVerts[0].w = pVerts[0].z;
-                pVerts[1].w = pVerts[1].z;
-                pVerts[2].w = pVerts[2].z;
-                pVerts[3].w = pVerts[3].z;
-
-                pVerts[0].u = uvScale * pVerts[0].u;
-                pVerts[0].v = uvScale * pVerts[0].v;
-
-                pVerts[1].u = uvScale * pVerts[1].u;
-                pVerts[1].v = uvScale * pVerts[1].v;
-
-                pVerts[2].u = uvScale * pVerts[2].u;
-                pVerts[2].v = uvScale * pVerts[2].v;
-
-                pVerts[3].u = uvScale * pVerts[3].u;
-                pVerts[3].v = uvScale * pVerts[3].v;
-
-                if (!(flagsCopy & 0x2000))
-                {
-                    // Force RGBA to be 255, 255, 255, A
-                    auto finalDiffuse = (unsigned __int8)baseColour | (((unsigned __int8)baseColour | ((baseColour | 0xFFFFFF00) << 8)) << 8);
-                    int f = finalDiffuse;
-                    // f++;
-                     //finalDiffuse = f;
-
-                    pVerts[0].diff = finalDiffuse;
-                    pVerts[1].diff = finalDiffuse;
-                    pVerts[2].diff = finalDiffuse;
-                    pVerts[3].diff = finalDiffuse;
-                }
-
-                pVerts[0].spec = 255;
-                pVerts[1].spec = 255;
-                pVerts[2].spec = 255;
-                pVerts[3].spec = 255;
-
-                if (flagsCopy & 0x8000)
-                {
-                    if (gfAmbient_E10838 != 255.0f)
-                    {
-                         LightVerts_2B52A80(4, pVerts, 0, baseColour);
-                    }
-                }
-
-                (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 4, D3DDP_DONOTUPDATEEXTENTS);
-                gNumPolysDrawn_dword_E43EA0 += 2;
+                auto v10 = pTexture->field_13_flags & 0xBF;
+                // goto LABEL_49;
+                pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
+            }
+            else if (pTexture->field_13_flags & 0x40 || quadFlags & 0x300)
+            {
+                // Skip
+            }
+            else
+            {
+                TextureCache_E01EC0(pTexture);
+                CacheFlushBatchRelated_2B52810(pTexture, quadFlags);
             }
         }
     }
+    else
+    {
+        CacheFlushBatchRelated_2B52810(pTexture, quadFlags);
+        auto v9 = pTexture->field_13_flags;
+        if (quadFlags & 0x300)                // 0x300 = textured ?
+        {
+            auto v10 = v9 & 0xBF;
+            //LABEL_49:
+            pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
+
+        }
+        else
+        {
+            auto v10 = v9 | 0x40;
+            //goto LABEL_49;
+            pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
+        }
+    }
+    //LABEL_50:
+
+    const auto pTextureCache = pTexture->field_1C_ptr;
+    const auto pHardwareTexture = pTextureCache->field_24_texture_id;
+    if ((*gActiveTextureId_dword_2B63DF4) != pHardwareTexture)
+    {
+        D3dTextureSetCurrent_2B56110(pTextureCache->field_24_texture_id);
+        (*gActiveTextureId_dword_2B63DF4) = pHardwareTexture;
+        ++mNumTextureSwaps_2B93EA4;
+        const auto v15 = pTextureCache->field_1C_pNext;
+        pTextureCache->field_8_used_Frame_num = frame_number_2B93E4C;
+        if (v15)
+        {
+            auto pCache = pTextureCache->field_20_pCache;
+
+            if (pCache)
+            {
+                pCache->field_1C_pNext = v15;
+            }
+            else
+            {
+                gPtr_12_array_dword_E13D20[pTextureCache->field_6_cache_idx] = v15;
+            }
+
+            pTextureCache->field_1C_pNext->field_20_pCache = pTextureCache->field_20_pCache;
+            const auto cacheIdx = pTextureCache->field_6_cache_idx;
+            pTextureCache->field_1C_pNext = 0;
+            pTextureCache->field_20_pCache = cache_12_array_dword_E13D80[cacheIdx];
+            cache_12_array_dword_E13D80[cacheIdx]->field_1C_pNext = pTextureCache;
+            cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = pTextureCache;
+        }
+    }
+
+    const auto flagsCopy = quadFlags;
+    float uvScale = pTexture->field_1C_ptr->field_C;
+    if (quadFlags & 0x10000)
+    {
+        const float textureW = (float)pTexture->field_E_width;
+        const float textureH = (float)pTexture->field_10_height;
+
+        if (gGpuSpecificHack_dword_2B63884)
+        {
+            //v19 = pVerts->mVerts[0].x;
+            //floor(v19);
+            //pVerts->mVerts[0].x = v19;
+            //v20 = pVerts->mVerts[0].y;
+            //floor(v20);
+            //pVerts->mVerts[0].y = v20;
+        }
+
+
+        const float flt_E10830 = 0.001f;
+        const auto v21 = pVerts[0].x + textureW;
+        const auto v23 = pVerts[0].x + textureW - flt_E10830;
+        const auto v24 = pVerts[0].y + textureH;
+
+
+        pVerts[1].z = pVerts[0].z;
+        pVerts[2].z = pVerts[0].z;
+        pVerts[3].z = pVerts[0].z;
+
+        pVerts[1].x = v23;
+        pVerts[1].y = pVerts[0].y;
+
+        pVerts[2].x = v21 - flt_E10830;
+        pVerts[2].y = v24 - flt_E10830;
+
+        pVerts[3].x = pVerts[0].x;
+        pVerts[3].y = v24 - flt_E10830;
+
+        pVerts[0].u = 0;
+        pVerts[0].v = 0;
+
+        float flt_E1082C = 0.0f; // 0.25 or 0, TODO: Set me in init
+
+        pVerts[1].u = textureW - flt_E1082C;
+        pVerts[1].v = 0;
+
+        pVerts[2].u = textureW - flt_E1082C;
+        pVerts[2].v = textureH - flt_E1082C;
+
+        pVerts[3].u = 0;
+        pVerts[3].v = textureH - flt_E1082C;
+    }
+
+    pVerts[0].w = pVerts[0].z;
+    pVerts[1].w = pVerts[1].z;
+    pVerts[2].w = pVerts[2].z;
+    pVerts[3].w = pVerts[3].z;
+
+    pVerts[0].u = uvScale * pVerts[0].u;
+    pVerts[0].v = uvScale * pVerts[0].v;
+
+    pVerts[1].u = uvScale * pVerts[1].u;
+    pVerts[1].v = uvScale * pVerts[1].v;
+
+    pVerts[2].u = uvScale * pVerts[2].u;
+    pVerts[2].v = uvScale * pVerts[2].v;
+
+    pVerts[3].u = uvScale * pVerts[3].u;
+    pVerts[3].v = uvScale * pVerts[3].v;
+
+    if (!(flagsCopy & 0x2000))
+    {
+        // Force RGBA to be 255, 255, 255, A
+        auto finalDiffuse = (unsigned __int8)baseColour | (((unsigned __int8)baseColour | ((baseColour | 0xFFFFFF00) << 8)) << 8);
+        int f = finalDiffuse;
+        // f++;
+         //finalDiffuse = f;
+
+        pVerts[0].diff = finalDiffuse;
+        pVerts[1].diff = finalDiffuse;
+        pVerts[2].diff = finalDiffuse;
+        pVerts[3].diff = finalDiffuse;
+    }
+
+    pVerts[0].spec = 255;
+    pVerts[1].spec = 255;
+    pVerts[2].spec = 255;
+    pVerts[3].spec = 255;
+
+    if (flagsCopy & 0x8000)
+    {
+        if (gfAmbient_E10838 != 255.0f)
+        {
+            LightVerts_2B52A80(4, pVerts, 0, baseColour);
+        }
+    }
+
+
+    Vert myCopy[4];
+    for (int i = 0; i < 4; i++)
+    {
+        myCopy[i] = pVerts[i];
+    }
+
+    (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 4, D3DDP_DONOTUPDATEEXTENTS);
+    gNumPolysDrawn_dword_E43EA0 += 2;
 }
 
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
@@ -2101,7 +2125,7 @@ static signed int Init_E02340()
         } while (idx < 12);
         
 
-        (*gActiveTextureId_dword_2B63DF4) = nullptr;// -1;
+        (*gActiveTextureId_dword_2B63DF4) = (SHardwareTexture*)-1;
 
         DDDEVICEIDENTIFIER deviceId = {};
         if (CheckIfSpecialFindGfxEnabled_E02250()
@@ -2627,16 +2651,23 @@ int CC gbh_SetColourDepth()
 
 float CC gbh_SetWindow(float left, float top, float right, float bottom)
 {
+    float ret = 0.0f;
     if (gProxyOnly)
     {
-        return gFuncs.pgbh_SetWindow(left, top, right, bottom);
+        ret = gFuncs.pgbh_SetWindow(left, top, right, bottom);
     }
 
     gWindow_left_dword_E43E08 = left;
     gWindow_right_dword_E43E0C = right;
     gWindow_top_dword_E43E10 = top;
     gWindow_bottom_dword_E43E14 = bottom;
-    gWindow_d5_dword_E13DC4 = gpVideoDriver_E13DC8->field_4_flags & 1; // TODO: Never used?
+   // gWindow_d5_dword_E13DC4 = gpVideoDriver_E13DC8->field_4_flags & 1; // TODO: Never used?
+
+    if (gProxyOnly)
+    {
+        return ret;
+    }
+
     return bottom;
 }
 

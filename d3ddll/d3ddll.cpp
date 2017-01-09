@@ -852,6 +852,8 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
             {
                 TextureCache_E01EC0(pTexture);
                 CacheFlushBatchRelated_2B52810(pTexture, quadFlags);
+
+                pTexture->field_13_flags |= 0x40;
             }
         }
     }

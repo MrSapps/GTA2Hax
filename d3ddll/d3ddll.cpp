@@ -784,29 +784,10 @@ static signed int __stdcall D3dTextureSetCurrent_2B56110(SHardwareTexture *pHard
 
 void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseColour)
 {
-    //return;
-
-    Vert backUp[4];
-    for (int i = 0; i < 4; i++)
-    {
-        backUp[i] = pVerts[i];
-    }
-    // gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
-
-    Vert theirCopy[4];
-    for (int i = 0; i < 4; i++)
-    {
-        theirCopy[i] = pVerts[i];
-    }
-
-    for (int i = 0; i < 4; i++)
-    {
-        pVerts[i] = backUp[i];
-    }
 
     if (gProxyOnly)
     {
-        //  return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
+        // return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
     }
 
     // Flags meanings:
@@ -861,9 +842,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
             {
                 TextureCache_E01EC0(pTexture);
                 CacheFlushBatchRelated_2B52810(pTexture, quadFlags);
-                auto v10 = pTexture->field_13_flags & 0xBF;
-                // goto LABEL_49;
-                pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
+                pTexture->field_13_flags &= 0xBF;
             }
             else if (pTexture->field_13_flags & 0x40 || quadFlags & 0x300)
             {
@@ -880,21 +859,16 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
     {
         CacheFlushBatchRelated_2B52810(pTexture, quadFlags);
         auto v9 = pTexture->field_13_flags;
-        if (quadFlags & 0x300)                // 0x300 = textured ?
+        if (quadFlags & 0x300)
         {
-            auto v10 = v9 & 0xBF;
-            //LABEL_49:
-            pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
+            pTexture->field_13_flags &= 0xBF;
 
         }
         else
         {
-            auto v10 = v9 | 0x40;
-            //goto LABEL_49;
-            pTexture->field_13_flags = v10; // = v9 | 0x40 on 0x300 fail check
+            pTexture->field_13_flags |= 0x40;
         }
     }
-    //LABEL_50:
 
     const auto pTextureCache = pTexture->field_1C_ptr;
     const auto pHardwareTexture = pTextureCache->field_24_texture_id;
@@ -927,8 +901,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
         }
     }
 
-    const auto flagsCopy = quadFlags;
-    float uvScale = pTexture->field_1C_ptr->field_C;
+    const float uvScale = pTexture->field_1C_ptr->field_C;
     if (quadFlags & 0x10000)
     {
         const float textureW = (float)pTexture->field_E_width;
@@ -996,7 +969,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
     pVerts[3].u = uvScale * pVerts[3].u;
     pVerts[3].v = uvScale * pVerts[3].v;
 
-    if (!(flagsCopy & 0x2000))
+    if (!(quadFlags & 0x2000))
     {
         // Force RGBA to be 255, 255, 255, A
         auto finalDiffuse = (unsigned __int8)baseColour | (((unsigned __int8)baseColour | ((baseColour | 0xFFFFFF00) << 8)) << 8);
@@ -1015,7 +988,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
     pVerts[2].spec = 255;
     pVerts[3].spec = 255;
 
-    if (flagsCopy & 0x8000)
+    if (quadFlags & 0x8000)
     {
         if (gfAmbient_E10838 != 255.0f)
         {

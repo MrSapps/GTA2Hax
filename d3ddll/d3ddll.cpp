@@ -495,12 +495,14 @@ static bool NotClipped(Vert* pVerts, int count)
         && minY >= gWindow_top_dword_E43E10);
 }
 
+static void  __stdcall SetRenderStates_E02960(int states);
+decltype(&SetRenderStates_E02960) pSetRenderStates_E02960 = 0x0;
 
-static void SetRenderStates_E02960(int states)
+static void  __stdcall SetRenderStates_E02960(int states)
 {
     if (states & 0x380)
     {
-        if (states & 0x80) // BYTE1(states) & 2
+        if (states & 0x200) 
         {
             auto result = (*renderStateCache_E43E24);
             if ((*renderStateCache_E43E24) == 1)
@@ -787,7 +789,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
 
     if (gProxyOnly)
     {
-         return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
+        // return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
     }
 
     // Flags meanings:
@@ -2306,7 +2308,7 @@ static void InstallHooks()
     DetourAttach((PVOID*)(&pLightVerts_2B52A80), (PVOID)LightVerts_2B52A80);
     DetourAttach((PVOID*)(&pTextureCache_E01EC0), (PVOID)TextureCache_E01EC0);
     DetourAttach((PVOID*)(&pD3dTextureSetCurrent_2B56110), (PVOID)D3dTextureSetCurrent_2B56110);
-
+    DetourAttach((PVOID*)(&pSetRenderStates_E02960), (PVOID)SetRenderStates_E02960);
 }
 
 static void RebasePtrs(DWORD baseAddr)
@@ -2320,6 +2322,8 @@ static void RebasePtrs(DWORD baseAddr)
     pInit2_2B51F40 = (decltype(&Init2_2B51F40))(baseAddr + 0x1F40);
     pTextureCache_E01EC0 = (decltype(&TextureCache_E01EC0))(baseAddr + 0x01EC0);
     pD3dTextureSetCurrent_2B56110 = (decltype(&D3dTextureSetCurrent_2B56110))(baseAddr + 0x6110);
+    pSetRenderStates_E02960 = (decltype(&SetRenderStates_E02960))(baseAddr + 0x2960);
+
 
     // Vars
     gPtr_12_array_dword_E13D20 = (decltype(gPtr_12_array_dword_E13D20))(baseAddr + 0x13D20);

@@ -61,7 +61,7 @@ unsigned int CC gbh_ConvertColour(unsigned __int8 a1, unsigned __int8 a2, unsign
 int CC gbh_DrawFlatRect(int a1, int a2);
 void CC gbh_DrawQuad(int flags, STexture* pTexture, Vert* pVerts, int baseColour);
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5);
-s32 CC gbh_DrawTilePart(int flags, STexture* pTexture, Vert* pData, int diffuseColour);
+s32 CC gbh_DrawTilePart(unsigned int flags, STexture* pTexture, Vert* pData, int diffuseColour);
 void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int diffuseColour);
 void CC gbh_EndLevel();
 double CC gbh_EndScene();

@@ -787,7 +787,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
 
     if (gProxyOnly)
     {
-        // return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
+         return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
     }
 
     // Flags meanings:
@@ -832,8 +832,9 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
             (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DTFG_LINEAR);
             (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_TEXTUREMIN, D3DTFG_LINEAR);
         }
-    }
-
+    } 
+    pTexture->field_13_flags &= 0xBF;
+    pTexture->field_13_flags |= 0x40;
     if (pTexture->field_1C_ptr)
     {
         if (pTexture->field_13_flags & 0x80)
@@ -1014,15 +1015,18 @@ void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
     __debugbreak();
 }
 
+// TODO: Refactor/clean up this func
 // Same as gbh_DrawTile
-s32 CC gbh_DrawTilePart(int flags, STexture* pTexture, Vert* pData, int diffuseColour)
+s32 CC gbh_DrawTilePart(unsigned int flags, STexture* pTexture, Vert* pData, int diffuseColour)
 {
     if (gProxyOnly)
     {
-        return gFuncs.pgbh_DrawTilePart(flags, pTexture, pData, diffuseColour);
+        // return gFuncs.pgbh_DrawTilePart(flags, pTexture, pData, diffuseColour);
     }
 
-    if (!(BYTE1(flags) & 0x40))
+    auto oldFlags = flags;
+
+    if (!(flags & 0x4000))
     {
         pData[0].u = 0.5f;
         pData[0].v = 0.5f;
@@ -1033,82 +1037,105 @@ s32 CC gbh_DrawTilePart(int flags, STexture* pTexture, Vert* pData, int diffuseC
         pData[3].u = 0.5f;
         pData[3].v = 63.499901f;
     }
-    
-    flags &= 0x60u;
 
-    switch (flags)
+    struct uv { float u; float v; };
+    uv uvs[4];
+    for (int i = 0; i < 4; i++)
+    {
+        uvs[i].u = pData[i].u;
+        uvs[i].v = pData[i].v;
+    }
+
+
+    // Rotate around the texture
+    bool updated = false;
+    switch (flags & 0x60)
     {
     case 0x20:
-    {
-        const auto u0 = pData[0].u;
-        const auto v0 = pData[0].v;
-        pData[0].u = pData[3].u;
-        pData[0].v = pData[3].v;
-        pData[3].u = pData[2].u;
-        pData[3].v = pData[2].v;
-        const auto u1 = pData[1].u;
-        pData[1].u = u0;
-        pData[2].u = u1;
-        pData[2].v = pData[1].v;
-        pData[1].v = v0;
+        pData[0].u = uvs[3].u;
+        pData[0].v = uvs[3].v;
+
+        pData[1].u = uvs[0].u;
+        pData[1].v = uvs[0].v;
+
+        pData[2].u = uvs[1].u;
+        pData[2].v = uvs[1].v;
+
+        pData[3].u = uvs[2].u;
+        pData[3].v = uvs[2].v;
+        updated = true;
         break;
-    }
+
     case 0x40:
-        flags ^= 0x18u;
+        oldFlags = flags ^ 0x18;
         break;
+
     case 0x60:
-    {
-        const auto u0 = pData[0].u;
-        const auto v0 = pData[0].v;
-        pData[0].u = pData[1].u;
-        pData[0].v = pData[1].v;
-        pData[1].u = pData[2].u;
-        pData[1].v = pData[2].v;
-        const auto u3 = pData[3].u;
-        pData[3].u = u0;
-        pData[2].u = u3;
-        pData[2].v = pData[3].v;
-        pData[3].v = v0;
+        pData[0].u = uvs[1].u;
+        pData[0].v = uvs[1].v;
+
+        pData[1].u = uvs[2].u;
+        pData[1].v = uvs[2].v;
+
+        pData[2].u = uvs[3].u;
+        pData[2].v = uvs[3].v;
+
+        pData[3].u = uvs[0].u;
+        pData[3].v = uvs[0].v;
+        updated = true;
         break;
     }
+
+    if (updated)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            uvs[i].u = pData[i].u;
+            uvs[i].v = pData[i].v;
+        }
     }
 
-    if (flags & 8)
+    // Flip up/down?
+    if (oldFlags & 8)
     {
-        const auto u0 = pData[0].u;
-        const auto v0 = pData[0].v;
-        pData[0].u = pData[1].u;
-        const auto v1 = pData[1].v;
-        pData[1].u = u0;
-        pData[0].v = v1;
-        const auto v12 = pData[3].u;
-        pData[1].v = v0;
-        const auto v3 = pData[3].v;
-        const auto u2 = pData[2].u;
-        pData[2].u = v12;
-        pData[3].u = u2;
-        pData[3].v = pData[2].v;
-        pData[2].v = v3;
+        pData[0].u = uvs[1].u;
+        pData[0].v = uvs[1].v;
+
+        pData[1].u = uvs[0].u;
+        pData[1].v = uvs[0].v;
+
+        pData[2].u = uvs[3].u;
+        pData[2].v = uvs[3].v;
+
+        pData[3].u = uvs[2].u;
+        pData[3].v = uvs[2].v;
+        if (oldFlags & 0x10)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                uvs[i].u = pData[i].u;
+                uvs[i].v = pData[i].v;
+            }
+        }
     }
 
-    if (flags & 0x10)
+    // Flip left/right?
+    if (oldFlags & 0x10)
     {
-        const auto u0 = pData[0].u;
-        const auto v0 = pData[0].v;
-        pData[0].u = pData[3].u;
-        const auto v3 = pData[3].v;
-        pData[3].u = u0;
-        pData[0].v = v3;
-        const auto u1 = pData[1].u;
-        pData[3].v = v0;
-        const auto v1 = pData[1].v;
-        const auto u2 = pData[2].u;
-        pData[2].u = u1;
-        pData[1].u = u2;
-        pData[1].v = pData[2].v;
-        pData[2].v = v1;
+        pData[0].u = uvs[3].u;
+        pData[0].v = uvs[3].v;
+
+        pData[1].u = uvs[2].u;
+        pData[1].v = uvs[2].v;
+
+        pData[2].u = uvs[1].u;
+        pData[2].v = uvs[1].v;
+
+        pData[3].u = uvs[0].u;
+        pData[3].v = uvs[0].v;
     }
-    gbh_DrawQuad(flags, pTexture, pData, diffuseColour);
+
+    gbh_DrawQuad(oldFlags, pTexture, pData, diffuseColour);
     return 0;
 }
 

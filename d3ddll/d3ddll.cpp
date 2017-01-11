@@ -13,8 +13,8 @@
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = true;      // Pass through all functions to real DLL
-static bool gDetours = true;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
+static bool gProxyOnly = false;      // Pass through all functions to real DLL
+static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 static bool gRealPtrs = true;
 
 // Other
@@ -72,7 +72,9 @@ static DWORD gCacheHitRates_dword_E43F10[12] = {};
 static DWORD gBatchFlushes_dword_2B93EA8 = 0;
 static DWORD mNumTextureSwaps_2B93EA4 = 0;
 static DWORD gNumPolysDrawn_dword_E43EA0 = 0;
-static struct SHardwareTexture** gActiveTextureId_dword_2B63DF4 = 0;
+
+static struct SHardwareTexture* hack2 = nullptr;
+static struct SHardwareTexture** gActiveTextureId_dword_2B63DF4 = &hack2;
 static double qword_2B60848 = 0;
 static DWORD frame_number_2B93E4C = 0;
 
@@ -92,12 +94,14 @@ static SGlobals gGlobals;
 
 
 static DWORD bPointFilteringOn_E48604 = 0;
-static DWORD* renderStateCache_E43E24 = 0;
+
+DWORD hack3 = 0;
+static DWORD* renderStateCache_E43E24 = &hack3;
 
 static SVideo* gpVideoDriver_E13DC8 = nullptr;
 
-SD3dStruct* hack;
-static struct SD3dStruct** gD3dPtr_dword_21C85E0;
+SD3dStruct* hack = nullptr;
+static struct SD3dStruct** gD3dPtr_dword_21C85E0 = &hack;
 static SVideoFunctions gVideoDriverFuncs;
 
 
@@ -149,24 +153,30 @@ static SPalData pals_2B63E00[16384];
 
 
 // Texture cache related
-//struct SCache* cache_12_array_dword_E13D80[12] = {};
-struct SCache** cache_12_array_dword_E13D80 = 0x0;
+struct SCache* cache_12_array_dword_E13D80[12] = {};
+//struct SCache** cache_12_array_dword_E13D80 = 0x0;
 
 //struct SCache* gPtr_12_array_dword_E13D20[12] = {};
-struct SCache** gPtr_12_array_dword_E13D20 = 0x0;
+//struct SCache** gPtr_12_array_dword_E13D20 = 0x0;
 
-static SCache* cache_dword_2B63DAC[12] = {};
-static SCache* cache_ptrs_dword_2B63D4C[12] = {};
+//static SCache* cache_dword_2B63DAC[12] = {};
+//static SCache* cache_ptrs_dword_2B63D4C[12] = {};
 
 // TODO: Might contain hard coded table data for cache sizes?
-static WORD word_2B607F8[12]; // 0x2B607F8 - 0x2B60810, 12 WORDS apart
-static WORD word_2B60810[12];
-
-static DWORD dword_2B93EB0[12]; // 0x2B93EB0-0x2B93EE0, 12 DWORDs apart
-static DWORD dword_2B93EE0[12];
+static WORD texture_sizes_word_107E0[12] = 
+{ 
+    8,16,32,64,128,256,1032,1040,1056,1088,1152,1280 
+}; // 0x2B607F8 - 0x2B60810, 12 WORDS apart
+static WORD gCacheUnknown_107F8[12] = 
+{
+    20, 62, 62, 88, 1, 0, 110, 126, 126, 40, 10, 0
+};
+static WORD gCacheSizes_word_10810[12];
+static DWORD gCacheSizes_dword_43EB0[12]; // 0x2B93EB0-0x2B93EE0, 12 DWORDs apart
+//static DWORD gCacheTextureSizes_dword_43EB0[12];
 
 // TODO: This seems to magically get set, R/W break point triggers nothing
-static WORD word_2B607E0[12] = { 8,16,32,64,128,256,1032,1040,1056,1088,1152,1280 };
+//static WORD word_2B607E0[12] = { 8,16,32,64,128,256,1032,1040,1056,1088,1152,1280 };
 
 
 struct SCache
@@ -224,10 +234,10 @@ STexture *__stdcall TextureCache_E01EC0(STexture *pTexture)
             }
 
             // Set the first item to the root of the cache list ?
-            pCache->field_1C_pNext = gPtr_12_array_dword_E13D20[pCache->field_6_cache_idx];
+            pCache->field_1C_pNext = cache_12_array_dword_E13D80[pCache->field_6_cache_idx];
 
-            gPtr_12_array_dword_E13D20[pCache->field_6_cache_idx]->field_20_pCache = pCache;
-            gPtr_12_array_dword_E13D20[pCache->field_6_cache_idx] = pCache;
+            cache_12_array_dword_E13D80[pCache->field_6_cache_idx]->field_20_pCache = pCache;
+            cache_12_array_dword_E13D80[pCache->field_6_cache_idx] = pCache;
             pCache->field_20_pCache = 0;
         }
     }
@@ -574,7 +584,7 @@ static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pText
 
 
     auto cache_index = 0;
-    while (biggestSide > word_2B607E0[cache_index])
+    while (biggestSide > texture_sizes_word_107E0[cache_index])
     {
         if (++cache_index >= 12)
         {
@@ -583,7 +593,7 @@ static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pText
     }
 
 
-    auto pCache = gPtr_12_array_dword_E13D20[cache_index];
+    auto pCache = cache_12_array_dword_E13D80[cache_index];
     if (pCache->field_8_used_Frame_num == frame_number_2B93E4C)
     {
         ++gBatchFlushes_dword_2B93EA8;
@@ -894,7 +904,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
             }
             else
             {
-                gPtr_12_array_dword_E13D20[pTextureCache->field_6_cache_idx] = v15;
+                cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = v15;
             }
 
             pTextureCache->field_1C_pNext->field_20_pCache = pTextureCache->field_20_pCache;
@@ -1223,7 +1233,7 @@ int CC gbh_GetUsedCache(int cacheIdx)
     }
 
     int usedCacheCount = 0;
-    SCache* pCache = gPtr_12_array_dword_E13D20[cacheIdx];
+    SCache* pCache = cache_12_array_dword_E13D80[cacheIdx];
     while (pCache)
     {
         if (pCache->field_8_used_Frame_num == frame_number_2B93E4C)
@@ -1467,7 +1477,7 @@ static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat,
     pConvertPixelFormat_2B55A10(pTextureFormat, pDDFormat);
 }
 
-static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFind, DWORD flagsToMatch, bool flagsAndSizeValid)
+static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFind, DWORD flagsToMatch, bool flagsAndSizeValid, bool storeInFirstField)
 {
     S3DDevice* device = pD3d->field_14_active_device;
     for (STextureFormat* result = device->field_C_first_texture_format; result; result = result->field_2C_next_texture_format)
@@ -1477,7 +1487,14 @@ static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFin
         {
             if (result->field_4_dwRGBBitCount == 16 || result->field_4_dwRGBBitCount == 15)
             {
-                pD3d->field_20 = result;
+                if (storeInFirstField)
+                {
+                    pD3d->field_20 = result;
+                }
+                else
+                {
+                    pD3d->field_1c_texture_format = result;
+                }
                 return result;
             }
         }
@@ -1497,37 +1514,37 @@ static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, int
     {
         if (!(flags & 0x40000000))
         {
-            result = FindTextureFormatHelper(pD3d, 4, 0x8000, true);
+            result = FindTextureFormatHelper(pD3d, 4, 0x8000, true, true);
             if (result)
             {
                 return result;
             }
         }
 
-        result = FindTextureFormatHelper(pD3d, 1, 0x8000, true);
+        result = FindTextureFormatHelper(pD3d, 1, 0x8000, true, true);
         if (result)
         {
             return result;
         }
 
 
-        return FindTextureFormatHelper(pD3d, 0, 0, false);
+        return FindTextureFormatHelper(pD3d, 0, 0, false, true);
     }
     
 
-    result = FindTextureFormatHelper(pD3d, 0, 0, false);
+    result = FindTextureFormatHelper(pD3d, 0, 0, false, false);
     if (result)
     {
         return result;
     }
 
-    result = FindTextureFormatHelper(pD3d, 1, 0x8000, true);
+    result = FindTextureFormatHelper(pD3d, 1, 0x8000, true, false);
     if (result)
     {
         return result;
     }
 
-    return FindTextureFormatHelper(pD3d, 4, 0x8000, true);
+    return FindTextureFormatHelper(pD3d, 4, 0x8000, true, false);
 }
 
 static HRESULT CALLBACK EnumTextureFormatsCallBack_E05BA0(LPDDPIXELFORMAT lpDDPixFmt, LPVOID lpContext)
@@ -1596,19 +1613,14 @@ static SHardwareTexture *__stdcall TextureAlloc_2B55DA0(SD3dStruct* pD3d, int wi
         SHardwareTexture* pMem = (SHardwareTexture *)malloc(sizeof(SHardwareTexture));
         if (pMem)
         {
+            memset(pMem, 0, sizeof(SHardwareTexture));
             pMem->field_48_d3d_struct = pD3d;
-            pMem->field_0_texture_id = 0;
-            pMem->field_4_flags = 0;
-            pMem->field_4C_pNext = 0;
-            pMem->field_50_pther = 0;
-            pMem->field_3C_locked_pixel_data = 0;
-            pMem->field_40_pitch = 0;
+
             D3DDEVICEDESC hardwareCaps = {};
             D3DDEVICEDESC softwareCaps = {};
             hardwareCaps.dwSize = sizeof(D3DDEVICEDESC);
             softwareCaps.dwSize = sizeof(D3DDEVICEDESC);
             pD3d->field_28_ID3D_Device->GetCaps(&hardwareCaps, &softwareCaps);
-
 
             DDSURFACEDESC2 surfaceDesc = {};
             memcpy(&surfaceDesc.ddpfPixelFormat, &pTextureFormat->field_9C_dd_texture_format, sizeof(DDPIXELFORMAT));
@@ -1628,67 +1640,62 @@ static SHardwareTexture *__stdcall TextureAlloc_2B55DA0(SD3dStruct* pD3d, int wi
                 pMem->field_4_flags |= 1;
             }
 
-            pMem->field_58_other_surface = 0;
-            pMem->field_5C_psurface_for_texture = 0;
 
             surfaceDesc.ddsCaps.dwCaps2 = 4;
-            surfaceDesc.ddsCaps.dwCaps |= 0x10;
+            surfaceDesc.ddsCaps.dwCaps |= 0x1000;
 
-            if (pD3d->field_14_active_device->field_20_flags & 2)
+            if (BYTE1(pD3d->field_14_active_device->field_20_flags) & 2)
             {
                 surfaceDesc.ddsCaps.dwCaps |= 0x401008;
                 surfaceDesc.dwMipMapCount = 1;
                 surfaceDesc.dwFlags |= 0x20000u;
             }
 
-            if (pD3d->field_0_pVideoDriver->field_120_IDDraw4->CreateSurface(&surfaceDesc, &pMem->field_5C_psurface_for_texture, 0))
+            if (FAILED(pD3d->field_0_pVideoDriver->field_120_IDDraw4->CreateSurface(&surfaceDesc, &pMem->field_5C_psurface_for_texture, 0)))
             {
                 free(pMem);
                 return 0;
             }
+
+            pMem->field_5C_psurface_for_texture->QueryInterface(IID_IDirect3DTexture2, (LPVOID*)&pMem->field_54_IDirect3dTexture2);
+            if (!(flags & 2))
+            {
+                pMem->field_4_flags |= 4;
+            }
+
+            pMem->field_44_width = width;
+            pMem->field_46_height = height;
+            pMem->field_8_bitCount = pTextureFormat->field_4_dwRGBBitCount;
+            pMem->field_C = pTextureFormat->field_24_bitcount1;
+            pMem->field_10 = 8 - pTextureFormat->field_20_bitcount0;
+
+
+            pMem->field_14 = pTextureFormat->field_20_bitcount0;
+            pMem->field_18 = pTextureFormat->field_1C_bitcount;
+            pMem->field_1C = 16 - pTextureFormat->field_18_bitcount;
+            pMem->field_20 = pTextureFormat->field_18_bitcount;
+            pMem->field_24 = pTextureFormat->field_14;
+            pMem->field_28 = 24 - pTextureFormat->field_10;
+            pMem->field_2C = pTextureFormat->field_10;
+            pMem->field_30 = pTextureFormat->field_C_shift;
+            pMem->field_34 = 32 - pTextureFormat->field_8_size;
+            pMem->field_38_size = pTextureFormat->field_8_size;
+           
+
+            pMem->field_4_flags |= pTextureFormat->field_28_flags & 0x8000;
+
+            auto pDevice = pD3d->field_14_active_device;
+            if (pDevice->field_14_phead)
+            {
+                pDevice->field_18_p0x60_IDirect3dTexture2_list->field_4C_pNext = pMem;
+                pD3d->field_14_active_device->field_18_p0x60_IDirect3dTexture2_list = pMem;
+            }
             else
             {
-                pMem->field_5C_psurface_for_texture->QueryInterface(IID_IDirect3DTexture2, (LPVOID*)&pMem->field_54_IDirect3dTexture2);
-                if (!(flags & 2))
-                {
-                    pMem->field_4_flags |= 4;
-                }
-
-                pMem->field_44_width = width;
-                pMem->field_46_height = height;
-                pMem->field_8_bitCount = pTextureFormat->field_4_dwRGBBitCount;
-                pMem->field_C = pTextureFormat->field_24_bitcount1;
-                pMem->field_10 = 8 - pTextureFormat->field_20_bitcount0;
-
-                /*
-                // TODO: v15 == ??
-                pMem->field_14 = (unsigned __int8)*(&v15 + pTextureFormat->field_20_bitcount0);
-                pMem->field_18 = pTextureFormat->field_1C_bitcount;
-                pMem->field_1C = 16 - pTextureFormat->field_18_bitcount;
-                pMem->field_20 = (unsigned __int8)*(&v15 + pTextureFormat->field_18_bitcount);
-                pMem->field_24 = pTextureFormat->field_14;
-                pMem->field_28 = 24 - pTextureFormat->field_10;
-                pMem->field_2C = (unsigned __int8)*(&v15 + pTextureFormat->field_10);
-                pMem->field_30 = pTextureFormat->field_C_shift;
-                pMem->field_34 = 32 - pTextureFormat->field_8_size;
-                pMem->field_38_size = (unsigned __int8)*(&v15 + pTextureFormat->field_8_size);
-                */
-
-                pMem->field_4_flags |= pTextureFormat->field_28_flags & 0x8000;
-
-                auto pDevice = pD3d->field_14_active_device;
-                if (pDevice->field_14_phead)
-                {
-                    pDevice->field_18_p0x60_IDirect3dTexture2_list->field_4C_pNext = pMem;
-                    pD3d->field_14_active_device->field_18_p0x60_IDirect3dTexture2_list = pMem;
-                }
-                else
-                {
-                    pDevice->field_14_phead = pMem;
-                    pD3d->field_14_active_device->field_18_p0x60_IDirect3dTexture2_list = pMem;
-                }
-                return pMem;
+                pDevice->field_14_phead = pMem;
+                pD3d->field_14_active_device->field_18_p0x60_IDirect3dTexture2_list = pMem;
             }
+            return pMem;
         }
     }
     return 0;
@@ -1804,9 +1811,9 @@ decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = 0x0;
 
 signed int __stdcall CreateD3DDevice_E01840(SD3dStruct* pRenderer)
 {
-    hack = pRenderer;
+    //hack = pRenderer;
   
-    return pCreateD3DDevice_E01840(pRenderer);
+    //return pCreateD3DDevice_E01840(pRenderer);
 
 
     if (FAILED(pRenderer->field_24_pID3d->CreateDevice(
@@ -1991,9 +1998,16 @@ static int CheckIfSpecialFindGfxEnabled_E02250()
     return Data;
 }
 
+static SHardwareTexture *__stdcall D3DTextureAllocate_2B560A0(SD3dStruct* pd3d, int width, int height, int flags);
+
+decltype(&D3DTextureAllocate_2B560A0) pD3DTextureAllocate_2B560A0 = 0x0;
+
 static SHardwareTexture *__stdcall D3DTextureAllocate_2B560A0(SD3dStruct* pd3d, int width, int height, int flags)
 {
-    return TextureAlloc_2B55DA0(pd3d, width, height, flags | 2);
+   // auto real = pD3DTextureAllocate_2B560A0(pd3d, width, height, flags);
+    auto re = TextureAlloc_2B55DA0(pd3d, width, height, flags | 2);
+
+    return re;
 }
 
 static SHardwareTexture *__stdcall TextureAllocLocked_2B560C0(SD3dStruct* pD3d, int width, int height, int flags)
@@ -2005,56 +2019,108 @@ static SHardwareTexture *__stdcall TextureAllocLocked_2B560C0(SD3dStruct* pD3d, 
 static int Init2_2B51F40();
 decltype(&Init2_2B51F40) pInit2_2B51F40 = 0x0;
 
+
+// Init2 related
+//static WORD* real_texture_sizes_word_107E0;
+//static WORD* real_CacheSizes_word_10810;
+//static DWORD* real_CacheSizes_dword_43EB0;
+
 // TODO
 static int Init2_2B51F40()
 {
-    return pInit2_2B51F40();
-
-    int idx = 0;
     int flags = 0;
-    int width = 64;
-    for (;;)
+    for (int i=0; i<12; i++)
     {
-        SCache* pCache = (SCache *)malloc(sizeof(SCache));
-        SHardwareTexture* pTexture = D3DTextureAllocate_2B560A0((*gD3dPtr_dword_21C85E0), width, width, flags);
-        if (!pTexture)
+        WORD width = texture_sizes_word_107E0[i];
+        if (width & 0x400)
         {
-            break;
-        }
-
-        SHardwareTexture* pTexture2 = TextureAllocLocked_2B560C0((*gD3dPtr_dword_21C85E0), width, width, flags);
-        if (!pTexture2)
-        {
-            break;
-        }
-
-        D3dTextureCopy_2B560E0(pTexture, pTexture2);
-
-        pCache->field_0 = 0x8000u;
-        //pCache->field_2 = v31;
-        //pCache->field_4_sizeQ = v9;
-        //cacheNum = cacheIdx;
-        //pCache->field_C_sizeQ = 1.0 / v8;
-        pCache->field_18_pSTexture = 0;
-        pCache->field_8_used_Frame_num = frame_number_2B93E4C;
-        //pCache->field_6_cache_idx = cacheNum;
-        pCache->field_24_texture_id = pTexture2;
-        pCache->field_20_pCache = 0;
-        pCache->field_1C_pNext = 0;
-
-        if (cache_ptrs_dword_2B63D4C[idx])
-        {
-            pCache->field_20_pCache = cache_dword_2B63DAC[idx];
-            cache_dword_2B63DAC[idx]->field_1C_pNext = pCache;
+            width &= 0xFBFF;
+            flags = 0x80000000;
         }
         else
         {
-            cache_ptrs_dword_2B63D4C[idx] = pCache;
+            flags = 0;
         }
+        cache_12_array_dword_E13D80[i] = 0;
 
-        break;
+        for (int j = 0; j < gCacheSizes_word_10810[i]; j++)
+        {
+            SCache* pCache = (SCache *)malloc(sizeof(SCache));
+            memset(pCache, 0, sizeof(SCache));
+
+            SHardwareTexture* pTexture = D3DTextureAllocate_2B560A0((*gD3dPtr_dword_21C85E0), width, width, flags);
+            if (!pTexture)
+            {
+                break;
+            }
+
+            SHardwareTexture* pTexture2 = TextureAllocLocked_2B560C0((*gD3dPtr_dword_21C85E0), width, width, flags);
+            if (!pTexture2)
+            {
+                break;
+            }
+
+            D3dTextureCopy_2B560E0(pTexture, pTexture2);
+
+            pCache->field_0 = 0x8000u;
+            pCache->field_2 = width;  // TODO: Check me
+            pCache->field_4 = width; // TODO: Check me
+            pCache->field_C = 1.0f / static_cast<float>(width);
+            pCache->field_18_pSTexture = 0;
+            pCache->field_8_used_Frame_num = frame_number_2B93E4C;
+            pCache->field_6_cache_idx = i;
+            pCache->field_24_texture_id = pTexture2;
+            pCache->field_20_pCache = 0;
+            pCache->field_1C_pNext = 0;
+
+            if (cache_12_array_dword_E13D80[i])
+            {
+                pCache->field_20_pCache = cache_12_array_dword_E13D80[i];
+                cache_12_array_dword_E13D80[i]->field_1C_pNext = pCache;
+                cache_12_array_dword_E13D80[i] = pCache;
+            }
+            else
+            {
+                cache_12_array_dword_E13D80[i] = pCache;
+            }
+        }
     }
 
+    ClearTexture_E061B0(*gD3dPtr_dword_21C85E0);
+
+    (*renderStateCache_E43E24) = 0;
+    bPointFilteringOn_E48604 = 0;
+
+    STextureFormat format = {};
+    ConvertPixelFormat_2B55A10(&format, &(*gD3dPtr_dword_21C85E0)->field_1c_texture_format->field_9C_dd_texture_format);
+
+    //rShift2_2B93E8C = format.field_24_bitcount1;
+    /*
+    gShift2_2B985EC = format.field_1C_bitcount;
+    rShift_2B63DB0 = 8 - format.field_20_bitcount0;
+
+    rMask_2B63DF0 = format.field_20_bitcount0;
+    gShift_2B93E34 = 16 - format.field_18_bitcount;
+    bShift_2B63D58 = format.field_14;
+    gMask_2B985FC = format.field_18_bitcount;
+
+    bShift2_2B63D6C = 24 - format.field_10;
+    bMask_2B93E30 = format.field_10;
+
+    ConvertPixelFormat_2B55A10(&format, &(*gD3dPtr_dword_21C85E0)->field_20->field_9C_dd_texture_format);
+
+    rShift2_2B63DD0 = format.field_24_bitcount1;
+    gShift2_2B93E2C = format.field_1C_bitcount;
+    rShift_2B63DD4 = 8 - format.field_20_bitcount0;
+    rMask_2B959D4 = format.field_20_bitcount0;
+
+    gShift_2B63DC0 = 16 - format.field_18_bitcount;
+    bShift_2B93E1C = format.field_14;
+    gMask_2B93E94 = format.field_18_bitcount;
+
+    bShift2_2B63DEC = 24 - format.field_10;
+    bMask_2B959D0 = format.field_10;
+    */
 
     return 1;
 }
@@ -2108,25 +2174,22 @@ static signed int Init_E02340()
         softwareCaps.dwSize = 0xFC;
         (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->GetCaps(&hardwareCaps, &softwareCaps);
 
-        DWORD idx = 0;
-        do
+        for (int i = 0; i < 12; i++)
         {
-            word_2B60810[idx]  = word_2B607F8[idx] * cacheSize;
-            dword_2B93EB0[idx] = word_2B607F8[idx] * cacheSize;
-            ++idx;
-        } while (idx < 12);
+            gCacheSizes_word_10810[i] = gCacheUnknown_107F8[i] * cacheSize;
+            gCacheSizes_dword_43EB0[i] = gCacheUnknown_107F8[i] * cacheSize;
+        }
         
         Init2_2B51F40();
   
-        idx = 0;
-        do
+        for (int i = 0; i < 12; i++)
         {
-            if (word_2B607F8[idx] && !dword_2B93EE0[idx])
+            if (gCacheUnknown_107F8[i] && !gCacheSizes_dword_43EB0[i])
             {
                 return 1;
             }
-            ++idx;
-        } while (idx < 12);
+        }
+
         
 
         (*gActiveTextureId_dword_2B63DF4) = (SHardwareTexture*)-1;
@@ -2298,6 +2361,7 @@ decltype(&TextureAlloc_2B55DA0) pTextureAlloc_2B55DA0 = 0x0;
 decltype(&TextureCache_E01EC0) pTextureCache_E01EC0 = 0x0;
 decltype(&D3dTextureSetCurrent_2B56110) pD3dTextureSetCurrent_2B56110 = 0x0;
 
+
 static void InstallHooks()
 {
     DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
@@ -2309,32 +2373,44 @@ static void InstallHooks()
     DetourAttach((PVOID*)(&pTextureCache_E01EC0), (PVOID)TextureCache_E01EC0);
     DetourAttach((PVOID*)(&pD3dTextureSetCurrent_2B56110), (PVOID)D3dTextureSetCurrent_2B56110);
     DetourAttach((PVOID*)(&pSetRenderStates_E02960), (PVOID)SetRenderStates_E02960);
+    
+    DetourAttach((PVOID*)(&pInit2_2B51F40), (PVOID)Init2_2B51F40);
+    DetourAttach((PVOID*)(&pD3DTextureAllocate_2B560A0), (PVOID)D3DTextureAllocate_2B560A0);
+
 }
+
 
 static void RebasePtrs(DWORD baseAddr)
 {
     // Funcs
-    pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))(baseAddr + 0x01840);
     pConvertPixelFormat_2B55A10 = (decltype(&ConvertPixelFormat_2B55A10))(baseAddr + 0x5A10);
+    pLightVerts_2B52A80 = (decltype(&LightVerts_2B52A80))(baseAddr + 0x2A80);
+
+    /*
+    pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))(baseAddr + 0x01840);
     pD3dTextureUnknown_2B561D0 = (decltype(&D3dTextureUnknown_2B561D0))(baseAddr + 0x61D0);
     pCacheFlushBatchRelated_2B52810 = (decltype(&CacheFlushBatchRelated_2B52810))(baseAddr + 0x2810);
-    pLightVerts_2B52A80 = (decltype(&LightVerts_2B52A80))(baseAddr + 0x2A80);
     pInit2_2B51F40 = (decltype(&Init2_2B51F40))(baseAddr + 0x1F40);
     pTextureCache_E01EC0 = (decltype(&TextureCache_E01EC0))(baseAddr + 0x01EC0);
     pD3dTextureSetCurrent_2B56110 = (decltype(&D3dTextureSetCurrent_2B56110))(baseAddr + 0x6110);
     pSetRenderStates_E02960 = (decltype(&SetRenderStates_E02960))(baseAddr + 0x2960);
-
+    pD3DTextureAllocate_2B560A0 = (decltype(&D3DTextureAllocate_2B560A0))(baseAddr + 0x60A0);
+    */
 
     // Vars
-    gPtr_12_array_dword_E13D20 = (decltype(gPtr_12_array_dword_E13D20))(baseAddr + 0x13D20);
-    cache_12_array_dword_E13D80 = (decltype(cache_12_array_dword_E13D80))(baseAddr + 0x13D80);
+    //cache_12_array_dword_E13D80 = (decltype(cache_12_array_dword_E13D80))(baseAddr + 0x13D4C);
     gActiveTextureId_dword_2B63DF4 = (decltype(gActiveTextureId_dword_2B63DF4))(baseAddr + 0x13DF4);
+    //real_texture_sizes_word_107E0 = (WORD*)(baseAddr + 0x107E0);
+    //real_CacheSizes_word_10810 = (WORD*)(baseAddr + 0x10810);
+    //real_CacheSizes_dword_43EB0 = (DWORD*)(baseAddr + 0x43EB0);
 
-    renderStateCache_E43E24 = (decltype(renderStateCache_E43E24))(baseAddr + 0x43E24);
 
-    DWORD off = baseAddr + 0x85E0;
-    hack = (SD3dStruct*)(off);
-    gD3dPtr_dword_21C85E0 = &hack;
+
+    //renderStateCache_E43E24 = (decltype(renderStateCache_E43E24))(baseAddr + 0x43E24);
+
+    //DWORD off = baseAddr + 0x85E0;
+    //hack = (SD3dStruct*)(off);
+    //gD3dPtr_dword_21C85E0 = &hack;
 }
 
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)

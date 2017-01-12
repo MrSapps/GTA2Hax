@@ -1442,18 +1442,18 @@ struct SHardwareTexture
     DWORD field_0_texture_id;
     DWORD field_4_flags;
     DWORD field_8_bitCount;
-    DWORD field_C;
-    DWORD field_10;
-    DWORD field_14;
-    DWORD field_18;
-    DWORD field_1C;
-    DWORD field_20;
-    DWORD field_24;
-    DWORD field_28;
-    DWORD field_2C;
-    DWORD field_30;
-    DWORD field_34;
-    DWORD field_38_size;
+    DWORD field_C_bBitMask;
+    DWORD field_10_bUnknown;
+    DWORD field_14_bBitIndex;
+    DWORD field_18_gBitIndex;
+    DWORD field_1C_gUnknown;
+    DWORD field_20_gBitMask;
+    DWORD field_24_rBitIndex;
+    DWORD field_28_rUnknown;
+    DWORD field_2C_rBitMask;
+    DWORD field_30_aBitIndex;
+    DWORD field_aUnknown;
+    DWORD field_38_aBitMask;
     DWORD field_3C_locked_pixel_data;
     DWORD field_40_pitch;
     WORD field_44_width;
@@ -1763,22 +1763,29 @@ static SHardwareTexture *__stdcall TextureAlloc_2B55DA0(SD3dStruct* pD3d, int wi
 
             pMem->field_44_width = width;
             pMem->field_46_height = height;
+            
             pMem->field_8_bitCount = pTextureFormat->field_4_dwRGBBitCount;
-            pMem->field_C = pTextureFormat->field_24_bBitMask;
-            pMem->field_10 = 8 - pTextureFormat->field_20_bBitIndex;
 
+            // Blue
+            pMem->field_C_bBitMask = pTextureFormat->field_24_bBitMask;
+            pMem->field_14_bBitIndex = pTextureFormat->field_20_bBitIndex;
+            pMem->field_10_bUnknown = 8 - pTextureFormat->field_20_bBitIndex;
 
-            pMem->field_14 = pTextureFormat->field_20_bBitIndex;
-            pMem->field_18 = pTextureFormat->field_1C_gBitIndex;
-            pMem->field_1C = 16 - pTextureFormat->field_18_gBitMask;
-            pMem->field_20 = pTextureFormat->field_18_gBitMask;
-            pMem->field_24 = pTextureFormat->field_14_rBitIndex;
-            pMem->field_28 = 24 - pTextureFormat->field_10_rBitMask;
-            pMem->field_2C = pTextureFormat->field_10_rBitMask;
-            pMem->field_30 = pTextureFormat->field_C_aBitIndex;
-            pMem->field_34 = 32 - pTextureFormat->field_8_aBitMask;
-            pMem->field_38_size = pTextureFormat->field_8_aBitMask;
-           
+            // Green
+            pMem->field_20_gBitMask = pTextureFormat->field_18_gBitMask;
+            pMem->field_18_gBitIndex = pTextureFormat->field_1C_gBitIndex;
+            pMem->field_1C_gUnknown = 16 - pTextureFormat->field_18_gBitMask;
+
+            // Red
+            pMem->field_24_rBitIndex = pTextureFormat->field_14_rBitIndex;
+            pMem->field_2C_rBitMask = pTextureFormat->field_10_rBitMask;
+            pMem->field_28_rUnknown = 24 - pTextureFormat->field_10_rBitMask;
+
+            // Alpha
+            pMem->field_30_aBitIndex = pTextureFormat->field_C_aBitIndex;
+            pMem->field_38_aBitMask = pTextureFormat->field_8_aBitMask;
+            pMem->field_aUnknown = 32 - pTextureFormat->field_8_aBitMask;
+
 
             pMem->field_4_flags |= pTextureFormat->field_28_flags & 0x8000;
 
@@ -2204,9 +2211,11 @@ static int Init2_2B51F40()
 
     bShift2_2B63D6C = 24 - format.field_10;
     bMask_2B93E30 = format.field_10;
+    */
 
     ConvertPixelFormat_2B55A10(&format, &(*gD3dPtr_dword_21C85E0)->field_20->field_9C_dd_texture_format);
 
+    /*
     rShift2_2B63DD0 = format.field_24_bitcount1;
     gShift2_2B93E2C = format.field_1C_bitcount;
     rShift_2B63DD4 = 8 - format.field_20_bitcount0;
@@ -2380,16 +2389,16 @@ static signed int __stdcall D3dTextureUnknown_2B561D0(SHardwareTexture* pHardwar
     if (renderFlags & 0x80)
     {
         // Transparent
-        local_dword_2B63CF0 = 0xFFFFFFFF >> pHardwareTexture->field_34;
-        local_dword_2B63CF0 &= pHardwareTexture->field_38_size;
-        local_dword_2B63CF0 <<= pHardwareTexture->field_30;
+        local_dword_2B63CF0 = 0xFFFFFFFF >> pHardwareTexture->field_aUnknown;
+        local_dword_2B63CF0 &= pHardwareTexture->field_38_aBitMask;
+        local_dword_2B63CF0 <<= pHardwareTexture->field_30_aBitIndex;
     }
     else if (renderFlags & 0x380)
     {
         // Semi transparent
-        local_dword_2B63CF0 = 0x88FFFFFF >> pHardwareTexture->field_34;
-        local_dword_2B63CF0 &= pHardwareTexture->field_38_size;
-        local_dword_2B63CF0 <<= pHardwareTexture->field_30;
+        local_dword_2B63CF0 = 0x88FFFFFF >> pHardwareTexture->field_aUnknown;
+        local_dword_2B63CF0 &= pHardwareTexture->field_38_aBitMask;
+        local_dword_2B63CF0 <<= pHardwareTexture->field_30_aBitIndex;
     }
 
     BYTE* pPixels = (BYTE*)pVideoDriver->field_13C_DDSurfaceDesc7.lpSurface;

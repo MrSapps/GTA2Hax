@@ -1401,8 +1401,8 @@ struct STextureFormat
     DWORD field_C_aBitIndex;
     DWORD field_10_rBitCount;
     DWORD field_14_rBitIndex;
-    DWORD field_18_gBitCount;
-    DWORD field_1C_gBitIndex;
+    DWORD field_18_gBitIndex;
+    DWORD field_1C_gBitCount;
     DWORD field_20_bBitCount;
     DWORD field_24_bBitIndex;
     DWORD field_28_flags;
@@ -1443,9 +1443,9 @@ struct SHardwareTexture
     DWORD field_0_texture_id;
     DWORD field_4_flags;
     DWORD field_8_bitCount;
-    DWORD field_C_bBitCount;
+    DWORD field_C_bBitIndex;
     DWORD field_10_bUnknown;
-    DWORD field_14_bBitIndex;
+    DWORD field_14_bBitCount;
     DWORD field_18_gBitIndex;
     DWORD field_1C_gUnknown;
     DWORD field_20_gBitCount;
@@ -1453,7 +1453,7 @@ struct SHardwareTexture
     DWORD field_28_rUnknown;
     DWORD field_2C_rBitCount;
     DWORD field_30_aBitIndex;
-    DWORD field_aUnknown;
+    DWORD field_34_aUnknown;
     DWORD field_38_aBitCount;
     DWORD field_3C_locked_pixel_data;
     DWORD field_40_pitch;
@@ -1527,8 +1527,8 @@ static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat,
         pTextureFormat->field_10_rBitCount = 0;
         pTextureFormat->field_24_bBitIndex = 0;
         pTextureFormat->field_20_bBitCount = 0;
-        pTextureFormat->field_1C_gBitIndex = 0;
-        pTextureFormat->field_18_gBitCount = 0;
+        pTextureFormat->field_1C_gBitCount = 0;
+        pTextureFormat->field_18_gBitIndex = 0;
         return;
     }
     pTextureFormat->field_14_rBitIndex = rBitIndex;
@@ -1537,8 +1537,8 @@ static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat,
     pTextureFormat->field_10_rBitCount = countSetBits(r);
 
     DWORD g = pDDFormat->dwGBitMask;
-    pTextureFormat->field_1C_gBitIndex = firstUnSetBitIndex(g);
-    pTextureFormat->field_18_gBitCount = countSetBits(g);
+    pTextureFormat->field_1C_gBitCount = firstUnSetBitIndex(g);
+    pTextureFormat->field_18_gBitIndex = countSetBits(g);
 
     DWORD b = pDDFormat->dwBBitMask;
     pTextureFormat->field_24_bBitIndex = firstUnSetBitIndex(b);
@@ -1796,25 +1796,38 @@ static SHardwareTexture *__stdcall TextureAlloc_2B55DA0(SD3dStruct* pD3d, int wi
             
             pMem->field_8_bitCount = pTextureFormat->field_4_dwRGBBitCount;
 
+            /*
+             nothing before this even though its usually 0x76 ?? Seems to be random value which you'd expect!
+            .text:00005DBA mov byte ptr [esp+18h], 1
+            .text:00005DBF mov byte ptr [esp+19h], 3
+            .text:00005DC4 mov byte ptr [esp+1Ah], 7
+            .text:00005DC9 mov byte ptr [esp+1Bh], 15
+            .text:00005DCE mov byte ptr [esp+1Ch], 31
+            .text:00005DD3 mov byte ptr [esp+1Dh], 63
+            .text:00005DD8 mov byte ptr [esp+1Eh], 127
+            */
+
+            const BYTE unknown[] = { 0 /*not inited in real func??*/, 1,3,7,15,31,64,127 };
+
             // Blue
-            pMem->field_C_bBitCount = pTextureFormat->field_24_bBitIndex;
-            pMem->field_14_bBitIndex = pTextureFormat->field_20_bBitCount;
+            pMem->field_14_bBitCount = unknown[pTextureFormat->field_20_bBitCount];
+            pMem->field_C_bBitIndex = pTextureFormat->field_24_bBitIndex;
             pMem->field_10_bUnknown = 8 - pTextureFormat->field_20_bBitCount;
 
             // Green
-            pMem->field_20_gBitCount = pTextureFormat->field_18_gBitCount;
-            pMem->field_18_gBitIndex = pTextureFormat->field_1C_gBitIndex;
-            pMem->field_1C_gUnknown = 16 - pTextureFormat->field_18_gBitCount;
+            pMem->field_20_gBitCount = unknown[pTextureFormat->field_1C_gBitCount]; 
+            pMem->field_18_gBitIndex = pTextureFormat->field_18_gBitIndex;
+            pMem->field_1C_gUnknown = 16 - pTextureFormat->field_1C_gBitCount;
 
             // Red
-            pMem->field_2C_rBitCount = pTextureFormat->field_10_rBitCount;
+            pMem->field_2C_rBitCount = unknown[pTextureFormat->field_10_rBitCount]; 
             pMem->field_24_rBitIndex = pTextureFormat->field_14_rBitIndex;
             pMem->field_28_rUnknown = 24 - pTextureFormat->field_10_rBitCount;
 
             // Alpha
-            pMem->field_38_aBitCount = pTextureFormat->field_8_aBitCount;
+            pMem->field_38_aBitCount = unknown[pTextureFormat->field_8_aBitCount];
             pMem->field_30_aBitIndex = pTextureFormat->field_C_aBitIndex;
-            pMem->field_aUnknown = 32 - pTextureFormat->field_8_aBitCount;
+            pMem->field_34_aUnknown = 32 - pTextureFormat->field_8_aBitCount;
 
 
             pMem->field_4_flags |= pTextureFormat->field_28_flags & 0x8000;
@@ -2139,8 +2152,43 @@ decltype(&D3DTextureAllocate_2B560A0) pD3DTextureAllocate_2B560A0 = 0x0;
 
 static SHardwareTexture *__stdcall D3DTextureAllocate_2B560A0(SD3dStruct* pd3d, int width, int height, int flags)
 {
-   // auto real = pD3DTextureAllocate_2B560A0(pd3d, width, height, flags);
+   // STextureFormat* pTextureFormat = FindTextureFormat_2B55C60(pd3d, flags);
+   // pTextureFormat->field_20_bBitCount = 0;
+
+    auto real = pD3DTextureAllocate_2B560A0(pd3d, width, height, flags);
     auto re = TextureAlloc_2B55DA0(pd3d, width, height, flags | 2);
+
+    assert(real->field_0_texture_id == re->field_0_texture_id);
+    assert(real->field_4_flags == re->field_4_flags);
+    assert(real->field_8_bitCount == re->field_8_bitCount);
+    
+    assert(real->field_C_bBitIndex == re->field_C_bBitIndex);
+    assert(real->field_10_bUnknown == re->field_10_bUnknown);
+    assert(real->field_14_bBitCount == re->field_14_bBitCount);
+
+    assert(real->field_18_gBitIndex == re->field_18_gBitIndex);
+    assert(real->field_1C_gUnknown == re->field_1C_gUnknown);
+    assert(real->field_20_gBitCount == re->field_20_gBitCount);
+
+    assert(real->field_24_rBitIndex == re->field_24_rBitIndex);
+    assert(real->field_28_rUnknown == re->field_28_rUnknown);
+    assert(real->field_2C_rBitCount == re->field_2C_rBitCount);
+
+    
+    assert(real->field_30_aBitIndex == re->field_30_aBitIndex);
+    assert(real->field_34_aUnknown == re->field_34_aUnknown);
+    if (real->field_30_aBitIndex)
+    {
+        assert(real->field_38_aBitCount == re->field_38_aBitCount); // Possibly not inited sometimes? 0 seems to be random mem
+    }
+
+    assert(real->field_3C_locked_pixel_data == re->field_3C_locked_pixel_data);
+
+    assert(real->field_40_pitch == re->field_40_pitch);
+
+    assert(real->field_44_width == re->field_44_width);
+    assert(real->field_46_height == re->field_46_height);
+
 
     return re;
 }
@@ -2419,14 +2467,14 @@ static signed int __stdcall D3dTextureUnknown_2B561D0(SHardwareTexture* pHardwar
     if (renderFlags & 0x80)
     {
         // Transparent
-        local_dword_2B63CF0 = 0xFFFFFFFF >> pHardwareTexture->field_aUnknown;
+        local_dword_2B63CF0 = 0xFFFFFFFF >> pHardwareTexture->field_34_aUnknown;
         local_dword_2B63CF0 &= pHardwareTexture->field_38_aBitCount;
         local_dword_2B63CF0 <<= pHardwareTexture->field_30_aBitIndex;
     }
     else if (renderFlags & 0x380)
     {
         // Semi transparent
-        local_dword_2B63CF0 = 0x88FFFFFF >> pHardwareTexture->field_aUnknown;
+        local_dword_2B63CF0 = 0x88FFFFFF >> pHardwareTexture->field_34_aUnknown;
         local_dword_2B63CF0 &= pHardwareTexture->field_38_aBitCount;
         local_dword_2B63CF0 <<= pHardwareTexture->field_30_aBitIndex;
     }
@@ -2502,18 +2550,18 @@ decltype(&D3dTextureSetCurrent_2B56110) pD3dTextureSetCurrent_2B56110 = 0x0;
 static void InstallHooks()
 {
     DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
-/*
+    DetourAttach((PVOID*)(&pD3DTextureAllocate_2B560A0), (PVOID)D3DTextureAllocate_2B560A0);
+
+    /*
     DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
-    DetourAttach((PVOID*)(&pD3dTextureUnknown_2B561D0), (PVOID)D3dTextureUnknown_2B561D0);
     DetourAttach((PVOID*)(&pCacheFlushBatchRelated_2B52810), (PVOID)CacheFlushBatchRelated_2B52810);
+    DetourAttach((PVOID*)(&pD3dTextureUnknown_2B561D0), (PVOID)D3dTextureUnknown_2B561D0);
    // DetourAttach((PVOID*)(&pgbh_DrawQuad), (PVOID)gbh_DrawQuad);
     DetourAttach((PVOID*)(&pLightVerts_2B52A80), (PVOID)LightVerts_2B52A80);
     DetourAttach((PVOID*)(&pTextureCache_E01EC0), (PVOID)TextureCache_E01EC0);
     DetourAttach((PVOID*)(&pD3dTextureSetCurrent_2B56110), (PVOID)D3dTextureSetCurrent_2B56110);
     DetourAttach((PVOID*)(&pSetRenderStates_E02960), (PVOID)SetRenderStates_E02960);
-    
     DetourAttach((PVOID*)(&pInit2_2B51F40), (PVOID)Init2_2B51F40);
-    DetourAttach((PVOID*)(&pD3DTextureAllocate_2B560A0), (PVOID)D3DTextureAllocate_2B560A0);
     */
 }
 
@@ -2523,6 +2571,7 @@ static void RebasePtrs(DWORD baseAddr)
     // Funcs
     pConvertPixelFormat_2B55A10 = (decltype(&ConvertPixelFormat_2B55A10))(baseAddr + 0x5A10);
     pLightVerts_2B52A80 = (decltype(&LightVerts_2B52A80))(baseAddr + 0x2A80);
+    pD3DTextureAllocate_2B560A0 = (decltype(&D3DTextureAllocate_2B560A0))(baseAddr + 0x60A0);
 
     /*
     pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))(baseAddr + 0x01840);
@@ -2532,7 +2581,6 @@ static void RebasePtrs(DWORD baseAddr)
     pTextureCache_E01EC0 = (decltype(&TextureCache_E01EC0))(baseAddr + 0x01EC0);
     pD3dTextureSetCurrent_2B56110 = (decltype(&D3dTextureSetCurrent_2B56110))(baseAddr + 0x6110);
     pSetRenderStates_E02960 = (decltype(&SetRenderStates_E02960))(baseAddr + 0x2960);
-    pD3DTextureAllocate_2B560A0 = (decltype(&D3DTextureAllocate_2B560A0))(baseAddr + 0x60A0);
     */
 
     // Vars

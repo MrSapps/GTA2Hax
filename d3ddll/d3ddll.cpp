@@ -7,6 +7,7 @@
 #include <set>
 #include <algorithm>
 #include "detours.h"
+#include <assert.h>
 
 #define BYTEn(x, n)   (*((BYTE*)&(x)+n))
 #define BYTE1(x)   BYTEn(x,  1)
@@ -799,7 +800,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
 
     if (gProxyOnly)
     {
-        // return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
+         return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
     }
 
     // Flags meanings:
@@ -1402,8 +1403,8 @@ struct STextureFormat
     DWORD field_14_rBitIndex;
     DWORD field_18_gBitCount;
     DWORD field_1C_gBitIndex;
-    DWORD field_20_bBitIndex;
-    DWORD field_24_bBitCount;
+    DWORD field_20_bBitCount;
+    DWORD field_24_bBitIndex;
     DWORD field_28_flags;
     struct STextureFormat* field_2C_next_texture_format;
     DWORD field_30;
@@ -1468,24 +1469,24 @@ struct SHardwareTexture
 };
 static_assert(sizeof(SHardwareTexture) == 0x60, "Wrong size SHardwareTexture");
 
-static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat, DDPIXELFORMAT* pDDFormat);
+static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat, const DDPIXELFORMAT* pDDFormat);
 decltype(&ConvertPixelFormat_2B55A10) pConvertPixelFormat_2B55A10 = (decltype(&ConvertPixelFormat_2B55A10))0x4A10;
 
 static unsigned int countSetBits(unsigned int value)
 {
-    unsigned int count = 0;
-    while (value > 0)
+    int i = 0;
+    for (i = 0; (value & 1); ++i)
     {
-        if ((value & 1) == 1)
-        {
-            count++;
-        }
         value >>= 1;
+        if (i >= 32)
+        {
+            return i;
+        }
     }
-    return count;
+    return i;
 }
 
-static unsigned int firstSetBitIndex(unsigned int value)
+static unsigned int firstUnSetBitIndex(DWORD& value)
 {
     int i = 0;
     for (i = 0; !(value & 1); ++i)
@@ -1500,19 +1501,32 @@ static unsigned int firstSetBitIndex(unsigned int value)
 }
 
 // TODO: Test VS real
-static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat, DDPIXELFORMAT* pDDFormat)
+static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat, const DDPIXELFORMAT* pDDFormat)
 {
+    //STextureFormat old = *pTextureFormat;
+    //pConvertPixelFormat_2B55A10(&old, pDDFormat);
+
     pTextureFormat->field_4_dwRGBBitCount = pDDFormat->dwRGBBitCount;
 
-    const unsigned int rBitIndex = firstSetBitIndex(pDDFormat->dwRBitMask);
+    DWORD r = pDDFormat->dwRBitMask;
+    unsigned int rBitIndex = 0;
+    if (r & 1)
+    {
+        rBitIndex = 1;
+    }
+    else
+    {
+        rBitIndex = firstUnSetBitIndex(r);
+    }
+
     const bool bHaveNoRedBits = rBitIndex == 32;
 
     if (bHaveNoRedBits)
     {
         pTextureFormat->field_14_rBitIndex = 0;
         pTextureFormat->field_10_rBitCount = 0;
-        pTextureFormat->field_24_bBitCount = 0;
-        pTextureFormat->field_20_bBitIndex = 0;
+        pTextureFormat->field_24_bBitIndex = 0;
+        pTextureFormat->field_20_bBitCount = 0;
         pTextureFormat->field_1C_gBitIndex = 0;
         pTextureFormat->field_18_gBitCount = 0;
         return;
@@ -1520,18 +1534,20 @@ static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat,
     pTextureFormat->field_14_rBitIndex = rBitIndex;
 
     // TODO: This actually counted set bits up to the first non set bit, and the real function counted unset to set bits and returned the resulting value
-    pTextureFormat->field_10_rBitCount = countSetBits(pDDFormat->dwRBitMask);
+    pTextureFormat->field_10_rBitCount = countSetBits(r);
 
-    pTextureFormat->field_1C_gBitIndex = firstSetBitIndex(pDDFormat->dwGBitMask);
-    pTextureFormat->field_18_gBitCount = countSetBits(pDDFormat->dwGBitMask);
+    DWORD g = pDDFormat->dwGBitMask;
+    pTextureFormat->field_1C_gBitIndex = firstUnSetBitIndex(g);
+    pTextureFormat->field_18_gBitCount = countSetBits(g);
 
-    pTextureFormat->field_20_bBitIndex = firstSetBitIndex(pDDFormat->dwBBitMask);
-    pTextureFormat->field_24_bBitCount = countSetBits(pDDFormat->dwBBitMask);
+    DWORD b = pDDFormat->dwBBitMask;
+    pTextureFormat->field_24_bBitIndex = firstUnSetBitIndex(b);
+    pTextureFormat->field_20_bBitCount = countSetBits(b);
 
     pTextureFormat->field_C_aBitIndex = 0;
     pTextureFormat->field_8_aBitCount = 0;
 
-    if (pDDFormat->dwFlags & DDPF_ALPHA)
+    if (pDDFormat->dwFlags & DDPF_ALPHAPIXELS)
     {
         auto rgbMask = (pDDFormat->dwBBitMask | pDDFormat->dwRBitMask | pDDFormat->dwGBitMask);
 
@@ -1554,10 +1570,11 @@ static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat,
 
         if (rgbMask)
         {
-            pTextureFormat->field_C_aBitIndex = firstSetBitIndex(rgbMask);
+            auto idx = firstUnSetBitIndex(rgbMask);
+            pTextureFormat->field_C_aBitIndex = idx;
             pTextureFormat->field_8_aBitCount = countSetBits(rgbMask);
 
-            if (firstSetBitIndex(rgbMask) >= pTextureFormat->field_4_dwRGBBitCount)
+            if (idx >= pTextureFormat->field_4_dwRGBBitCount)
             {
                 pTextureFormat->field_C_aBitIndex = 0;
                 pTextureFormat->field_8_aBitCount = 0;
@@ -1573,6 +1590,19 @@ static void __stdcall ConvertPixelFormat_2B55A10(STextureFormat* pTextureFormat,
         pTextureFormat->field_8_aBitCount,
         pTextureFormat->field_C_aBitIndex);
     OutputDebugStringA(buffer);
+
+    /*
+    assert(old.field_4_dwRGBBitCount == pTextureFormat->field_4_dwRGBBitCount);
+    assert(old.field_8_aBitCount == pTextureFormat->field_8_aBitCount);
+    assert(old.field_C_aBitIndex == pTextureFormat->field_C_aBitIndex);
+    assert(old.field_10_rBitCount == pTextureFormat->field_10_rBitCount);
+    assert(old.field_14_rBitIndex == pTextureFormat->field_14_rBitIndex);
+    assert(old.field_18_gBitCount == pTextureFormat->field_18_gBitCount);
+    assert(old.field_1C_gBitIndex == pTextureFormat->field_1C_gBitIndex);
+    assert(old.field_20_bBitCount == pTextureFormat->field_20_bBitCount);
+    assert(old.field_24_bBitIndex == pTextureFormat->field_24_bBitIndex);
+    assert(old.field_28_flags == pTextureFormat->field_28_flags);
+    */
 }
 
 static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFind, DWORD flagsToMatch, bool flagsAndSizeValid, bool storeInFirstField)
@@ -1767,9 +1797,9 @@ static SHardwareTexture *__stdcall TextureAlloc_2B55DA0(SD3dStruct* pD3d, int wi
             pMem->field_8_bitCount = pTextureFormat->field_4_dwRGBBitCount;
 
             // Blue
-            pMem->field_C_bBitCount = pTextureFormat->field_24_bBitCount;
-            pMem->field_14_bBitIndex = pTextureFormat->field_20_bBitIndex;
-            pMem->field_10_bUnknown = 8 - pTextureFormat->field_20_bBitIndex;
+            pMem->field_C_bBitCount = pTextureFormat->field_24_bBitIndex;
+            pMem->field_14_bBitIndex = pTextureFormat->field_20_bBitCount;
+            pMem->field_10_bUnknown = 8 - pTextureFormat->field_20_bBitCount;
 
             // Green
             pMem->field_20_gBitCount = pTextureFormat->field_18_gBitCount;
@@ -2471,8 +2501,9 @@ decltype(&D3dTextureSetCurrent_2B56110) pD3dTextureSetCurrent_2B56110 = 0x0;
 
 static void InstallHooks()
 {
+    DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
+/*
     DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
-    //DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
     DetourAttach((PVOID*)(&pD3dTextureUnknown_2B561D0), (PVOID)D3dTextureUnknown_2B561D0);
     DetourAttach((PVOID*)(&pCacheFlushBatchRelated_2B52810), (PVOID)CacheFlushBatchRelated_2B52810);
    // DetourAttach((PVOID*)(&pgbh_DrawQuad), (PVOID)gbh_DrawQuad);
@@ -2483,7 +2514,7 @@ static void InstallHooks()
     
     DetourAttach((PVOID*)(&pInit2_2B51F40), (PVOID)Init2_2B51F40);
     DetourAttach((PVOID*)(&pD3DTextureAllocate_2B560A0), (PVOID)D3DTextureAllocate_2B560A0);
-
+    */
 }
 
 

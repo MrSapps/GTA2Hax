@@ -15,7 +15,7 @@
 #pragma comment(lib, "dxguid.lib")
 
 static bool gProxyOnly = false;      // Pass through all functions to real DLL
-static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
+static bool gDetours = true;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 static bool gRealPtrs = true;
 
 // Other
@@ -57,7 +57,7 @@ struct SD3dStruct
     S3DDevice* field_14_active_device;
     DWORD field_18_current_id;
     struct STextureFormat* field_1c_texture_format;
-    struct STextureFormat* field_20;
+    struct STextureFormat* field_20_texture_format;
     IDirect3D3* field_24_pID3d;
     IDirect3DDevice3* field_28_ID3D_Device;
     IDirect3DViewport3* field_2C_IViewPort;
@@ -252,7 +252,8 @@ decltype(&LightVerts_2B52A80) pLightVerts_2B52A80 = 0x0;
 int __stdcall LightVerts_2B52A80(int count, Vert *pVerts, int alwaysZero, unsigned __int8 colourRelated)
 {
     // TODO: Implement me
-    return pLightVerts_2B52A80(count, pVerts, alwaysZero, colourRelated);
+//    return pLightVerts_2B52A80(count, pVerts, alwaysZero, colourRelated);
+    return 0;
 }
 
 void CC ConvertColourBank(s32 unknown)
@@ -1617,7 +1618,7 @@ static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFin
             {
                 if (storeInFirstField)
                 {
-                    pD3d->field_20 = result;
+                    pD3d->field_20_texture_format = result;
                 }
                 else
                 {
@@ -1630,8 +1631,13 @@ static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFin
     return nullptr;
 }
 
+static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, int flags);
+decltype(&FindTextureFormat_2B55C60) pFindTextureFormat_2B55C60 = 0x0;
+
 static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, int flags)
 {
+
+
     STextureFormat* result = nullptr;
     S3DDevice* device = pD3d->field_14_active_device;
 
@@ -2155,9 +2161,9 @@ static SHardwareTexture *__stdcall D3DTextureAllocate_2B560A0(SD3dStruct* pd3d, 
    // STextureFormat* pTextureFormat = FindTextureFormat_2B55C60(pd3d, flags);
    // pTextureFormat->field_20_bBitCount = 0;
 
-    auto real = pD3DTextureAllocate_2B560A0(pd3d, width, height, flags);
-    auto re = TextureAlloc_2B55DA0(pd3d, width, height, flags | 2);
-
+//    auto real = pD3DTextureAllocate_2B560A0(pd3d, width, height, flags);
+    auto re = TextureAlloc_2B55DA0(pd3d, width, height, flags  | 2);
+    /*
     assert(real->field_0_texture_id == re->field_0_texture_id);
     assert(real->field_4_flags == re->field_4_flags);
     assert(real->field_8_bitCount == re->field_8_bitCount);
@@ -2188,7 +2194,7 @@ static SHardwareTexture *__stdcall D3DTextureAllocate_2B560A0(SD3dStruct* pd3d, 
 
     assert(real->field_44_width == re->field_44_width);
     assert(real->field_46_height == re->field_46_height);
-
+    */
 
     return re;
 }
@@ -2202,6 +2208,25 @@ static SHardwareTexture *__stdcall TextureAllocLocked_2B560C0(SD3dStruct* pD3d, 
 static int Init2_2B51F40();
 decltype(&Init2_2B51F40) pInit2_2B51F40 = 0x0;
 
+static DWORD bShift2_2B63D6C = 0;
+static DWORD bMask_2B93E30 = 0;
+static DWORD bShift_2B63D58 = 0;
+static DWORD gShift_2B93E34 = 0;
+static DWORD gMask_2B985FC = 0;
+static DWORD gShift2_2B985EC = 0;
+static DWORD rShift_2B63DB0 = 0;
+static DWORD rMask_2B63DF0 = 0;
+static DWORD rShift2_2B93E8C = 0;
+
+static DWORD bShift2_2B63DEC = 0;
+static DWORD gShift_2B63DC0 = 0;
+static DWORD bMask_2B959D0 = 0;
+static DWORD bShift_2B93E1C = 0;
+static DWORD rShift_2B63DD4 = 0;
+static DWORD gMask_2B93E94 = 0;
+static DWORD gShift2_2B93E2C = 0;
+static DWORD rMask_2B959D4 = 0;
+static DWORD rShift2_2B63DD0 = 0;
 
 // Init2 related
 //static WORD* real_texture_sizes_word_107E0;
@@ -2274,38 +2299,58 @@ static int Init2_2B51F40()
     (*renderStateCache_E43E24) = 0;
     bPointFilteringOn_E48604 = 0;
 
-    STextureFormat format = {};
-    ConvertPixelFormat_2B55A10(&format, &(*gD3dPtr_dword_21C85E0)->field_1c_texture_format->field_9C_dd_texture_format);
+    // Same code as texture alloc func.. TODO: Merge into a helper
+    const BYTE unknown[] = { 0 /*not inited in real func??*/, 1,3,7,15,31,64,127 };
 
-    //rShift2_2B93E8C = format.field_24_bitcount1;
-    /*
-    gShift2_2B985EC = format.field_1C_bitcount;
-    rShift_2B63DB0 = 8 - format.field_20_bitcount0;
+    {
+        STextureFormat format = {};
+        ConvertPixelFormat_2B55A10(&format, &(*gD3dPtr_dword_21C85E0)->field_1c_texture_format->field_9C_dd_texture_format);
 
-    rMask_2B63DF0 = format.field_20_bitcount0;
-    gShift_2B93E34 = 16 - format.field_18_bitcount;
-    bShift_2B63D58 = format.field_14;
-    gMask_2B985FC = format.field_18_bitcount;
 
-    bShift2_2B63D6C = 24 - format.field_10;
-    bMask_2B93E30 = format.field_10;
-    */
 
-    ConvertPixelFormat_2B55A10(&format, &(*gD3dPtr_dword_21C85E0)->field_20->field_9C_dd_texture_format);
+        rShift2_2B93E8C = format.field_24_bBitIndex;            // 0
+        rMask_2B63DF0 = unknown[format.field_20_bBitCount];     // 1f
+        rShift_2B63DB0 = 8 - format.field_20_bBitCount;         // 5
 
-    /*
-    rShift2_2B63DD0 = format.field_24_bitcount1;
-    gShift2_2B93E2C = format.field_1C_bitcount;
-    rShift_2B63DD4 = 8 - format.field_20_bitcount0;
-    rMask_2B959D4 = format.field_20_bitcount0;
+        gShift2_2B985EC = format.field_1C_gBitCount;            // 5
+        gMask_2B985FC = unknown[format.field_18_gBitIndex];     // 1f
+        gShift_2B93E34 = 16 - format.field_18_gBitIndex;        // b
 
-    gShift_2B63DC0 = 16 - format.field_18_bitcount;
-    bShift_2B93E1C = format.field_14;
-    gMask_2B93E94 = format.field_18_bitcount;
+        bShift_2B63D58 = format.field_14_rBitIndex;             // a
+        bMask_2B93E30 = unknown[format.field_10_rBitCount];     // 1f
+        bShift2_2B63D6C = 24 - format.field_10_rBitCount;       // 13
+    }
 
-    bShift2_2B63DEC = 24 - format.field_10;
-    bMask_2B959D0 = format.field_10;
-    */
+    {
+        STextureFormat format = {};
+        ConvertPixelFormat_2B55A10(&format, &(*gD3dPtr_dword_21C85E0)->field_20_texture_format->field_9C_dd_texture_format);
+
+        rShift2_2B63DD0 = format.field_24_bBitIndex;            // 0 | 0
+        rMask_2B959D4 = unknown[format.field_20_bBitCount];     // f | 5
+        rShift_2B63DD4 = 8 - format.field_20_bBitCount;         // 4 | 5
+
+        gShift2_2B93E2C = format.field_1C_gBitCount;            // 4 | 5
+        gMask_2B93E94 = unknown[format.field_18_gBitIndex];     // f | 5
+        gShift_2B63DC0 = 16 - format.field_18_gBitIndex;        // c | 5
+
+        bShift_2B93E1C = format.field_14_rBitIndex;             // 8 | a
+        bMask_2B959D0 = unknown[format.field_10_rBitCount];     // f | 5
+        bShift2_2B63DEC = 24 - format.field_10_rBitCount;       // 14 | 5
+
+        /*
+        rShift2_2B63DD0 = 0x0;
+        rMask_2B959D4 = 0xf;
+        rShift_2B63DD4 = 0x4;
+
+        gShift2_2B93E2C = 0x4;
+        gMask_2B93E94 = 0xf;
+        gShift_2B63DC0 = 0xc;
+
+        bShift_2B93E1C = 0x8;
+        bMask_2B959D0 = 0xf;
+        bShift2_2B63DEC = 0x14;
+        */
+    }
 
     return 1;
 }
@@ -2549,8 +2594,11 @@ decltype(&D3dTextureSetCurrent_2B56110) pD3dTextureSetCurrent_2B56110 = 0x0;
 
 static void InstallHooks()
 {
-    DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
-    DetourAttach((PVOID*)(&pD3DTextureAllocate_2B560A0), (PVOID)D3DTextureAllocate_2B560A0);
+    //DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
+   // DetourAttach((PVOID*)(&pD3DTextureAllocate_2B560A0), (PVOID)D3DTextureAllocate_2B560A0);
+    DetourAttach((PVOID*)(&pFindTextureFormat_2B55C60), (PVOID)FindTextureFormat_2B55C60);
+
+    
 
     /*
     DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
@@ -2572,6 +2620,7 @@ static void RebasePtrs(DWORD baseAddr)
     pConvertPixelFormat_2B55A10 = (decltype(&ConvertPixelFormat_2B55A10))(baseAddr + 0x5A10);
     pLightVerts_2B52A80 = (decltype(&LightVerts_2B52A80))(baseAddr + 0x2A80);
     pD3DTextureAllocate_2B560A0 = (decltype(&D3DTextureAllocate_2B560A0))(baseAddr + 0x60A0);
+    pFindTextureFormat_2B55C60 = (decltype(&FindTextureFormat_2B55C60))(baseAddr + 0x5C60);
 
     /*
     pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))(baseAddr + 0x01840);
@@ -2782,18 +2831,17 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
     pals_2B63E00[paltId].mbLoaded = 1;
     pals_2B63E00[paltId].mPData = pAllocatedData;
 
-    // TODO: Set for each format
-    DWORD bMask_2B60828 = 0;
-    DWORD bShift_2B93E00 = 0;
-    DWORD bShift2_2B985F0 = 0;
 
-    DWORD gMask_2B63DB4 = 0;
-    DWORD gShift_2B93E84 = 0;
-    DWORD gShift2_2B93E90 = 0;
-    
-    DWORD rMask_2B63DB8 = 0;
-    DWORD rShift_2B93E44 = 0;
-    DWORD rShift2_2B63D60 = 0;
+
+    DWORD local_Shift2_2B985F0 = bShift2_2B63D6C;
+    DWORD local_bMask_2B60828 = bMask_2B93E30;
+    DWORD local_bShift_2B93E00 = bShift_2B63D58;
+    DWORD local_gShift_2B93E84 = gShift_2B93E34;
+    DWORD local_gMask_2B63DB4 = gMask_2B985FC;
+    DWORD local_gShift2_2B93E90 = gShift2_2B985EC;
+    DWORD local_rShift_2B93E44 = rShift_2B63DB0;
+    DWORD local_rMask_2B63DB8 = rMask_2B63DF0;
+    DWORD local_rShift2_2B63D60 = rShift2_2B93E8C;
 
     // Set the first pal to be a 16bit converted copy of the original
     pData = pOriginal;
@@ -2801,17 +2849,30 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
     {
         DWORD r = *pData;
         DWORD g = *pData;
-        DWORD b = (*pData) >> bShift2_2B985F0;
+        DWORD b = (*pData) >> local_Shift2_2B985F0;
 
-        pAllocatedData[i] =  (((unsigned __int16)bMask_2B60828 & (unsigned __int16)b) << bShift_2B93E00) 
-            | ((gMask_2B63DB4 & (g >> gShift_2B93E84)) << gShift2_2B93E90) 
-            | ((rMask_2B63DB8 & (r >> rShift_2B93E44)) << rShift2_2B63D60);
+        pAllocatedData[i] = 
+            (((unsigned __int16)local_bMask_2B60828 & (unsigned __int16)b)
+                << local_bShift_2B93E00) |
+                ((local_gMask_2B63DB4 & (g >> local_gShift_2B93E84)) << local_gShift2_2B93E90) 
+              | ((local_rMask_2B63DB8 & (r >> local_rShift_2B93E44)) << local_rShift2_2B63D60);
+
 
         // TEMP HACK
-        pAllocatedData[i] = *pData;
+        //pAllocatedData[i] = *pData;
 
         pData += 64; // Pal data is stored in columns not rows
     }
+
+    local_Shift2_2B985F0 = bShift2_2B63DEC;
+    local_gShift_2B93E84 = gShift_2B63DC0;
+    local_bMask_2B60828 = bMask_2B959D0;
+    local_bShift_2B93E00 = bShift_2B93E1C;
+    local_rShift_2B93E44 = rShift_2B63DD4;
+    local_gMask_2B63DB4 = gMask_2B93E94;
+    local_gShift2_2B93E90 = gShift2_2B93E2C;
+    local_rMask_2B63DB8 = rMask_2B959D4;
+    local_rShift2_2B63D60 = rShift2_2B63DD0;
 
     // Set the 2nd pal to be a 16bit texture format converted copy of the original
     WORD* pSecond = pAllocatedData + 256;
@@ -2820,14 +2881,15 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
     {
         DWORD r = *pData;
         DWORD g = *pData;
-        DWORD b = (*pData) >> bShift2_2B985F0;
+        DWORD b = (*pData) >> local_Shift2_2B985F0;
 
-        pSecond[i] = ((bMask_2B60828 & b) << bShift_2B93E00) 
-            | ((gMask_2B63DB4 & (g >> gShift_2B93E84)) << gShift2_2B93E90)
-            | ((rMask_2B63DB8 & (r >> rShift_2B93E44)) << rShift2_2B63D60);
+        pSecond[i] = ((local_bMask_2B60828 & b) << local_bShift_2B93E00) 
+            | ((local_gMask_2B63DB4 & (g >> local_gShift_2B93E84)) << local_gShift2_2B93E90) 
+            | ((local_rMask_2B63DB8 & (r >> local_rShift_2B93E44)) << local_rShift2_2B63D60);
+
 
         // TEMP HACK
-        pAllocatedData[i] = *pData;
+       // pAllocatedData[i] = *pData;
 
         pData += 64; // Pal data is stored in columns not rows
     }

@@ -15,8 +15,8 @@
 #pragma comment(lib, "dxguid.lib")
 
 static bool gProxyOnly = false;      // Pass through all functions to real DLL
-static bool gDetours = true;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
-static bool gRealPtrs = true;
+static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
+static bool gRealPtrs = false;
 
 // Other
 static S3DFunctions gFuncs;
@@ -152,33 +152,12 @@ static_assert(sizeof(SPalData) == 0xC, "Wrong size SPalData");
 
 static SPalData pals_2B63E00[16384];
 
-
 // Texture cache related
 struct SCache* cache_12_array_dword_E13D80[12] = {};
-//struct SCache** cache_12_array_dword_E13D80 = 0x0;
-
-//struct SCache* gPtr_12_array_dword_E13D20[12] = {};
-//struct SCache** gPtr_12_array_dword_E13D20 = 0x0;
-
-//static SCache* cache_dword_2B63DAC[12] = {};
-//static SCache* cache_ptrs_dword_2B63D4C[12] = {};
-
-// TODO: Might contain hard coded table data for cache sizes?
-static WORD texture_sizes_word_107E0[12] = 
-{ 
-    8,16,32,64,128,256,1032,1040,1056,1088,1152,1280 
-}; // 0x2B607F8 - 0x2B60810, 12 WORDS apart
-static WORD gCacheUnknown_107F8[12] = 
-{
-    20, 62, 62, 88, 1, 0, 110, 126, 126, 40, 10, 0
-};
+static WORD texture_sizes_word_107E0[12] = {  8,16,32,64,128,256,1032,1040,1056,1088,1152,1280 };
+static WORD gCacheUnknown_107F8[12] = { 10, 62, 62, 88, 1, 0, 110, 126, 126, 40, 10, 0 };
 static WORD gCacheSizes_word_10810[12];
-static DWORD gCacheSizes_dword_43EB0[12]; // 0x2B93EB0-0x2B93EE0, 12 DWORDs apart
-//static DWORD gCacheTextureSizes_dword_43EB0[12];
-
-// TODO: This seems to magically get set, R/W break point triggers nothing
-//static WORD word_2B607E0[12] = { 8,16,32,64,128,256,1032,1040,1056,1088,1152,1280 };
-
+static DWORD gCacheSizes_dword_43EB0[12]; 
 
 struct SCache
 {
@@ -361,7 +340,7 @@ int CC gbh_AddLight(int a1)
 {
     if (gProxyOnly)
     {
-        return gFuncs.pgbh_AddLight(a1);
+        //return gFuncs.pgbh_AddLight(a1);
     }
     return 0;
 }
@@ -801,6 +780,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
 
     if (gProxyOnly)
     {
+
          return gFuncs.pgbh_DrawQuad(quadFlags, pTexture, pVerts, baseColour);
     }
 
@@ -1631,13 +1611,12 @@ static STextureFormat* FindTextureFormatHelper(SD3dStruct* pD3d, DWORD sizeToFin
     return nullptr;
 }
 
-static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, int flags);
+static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, unsigned int flags);
 decltype(&FindTextureFormat_2B55C60) pFindTextureFormat_2B55C60 = 0x0;
 
-static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, int flags)
+
+static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, unsigned int flags)
 {
-
-
     STextureFormat* result = nullptr;
     S3DDevice* device = pD3d->field_14_active_device;
 
@@ -1681,6 +1660,9 @@ static STextureFormat *__stdcall FindTextureFormat_2B55C60(SD3dStruct* pD3d, int
     return FindTextureFormatHelper(pD3d, 4, 0x8000, true, false);
 }
 
+static HRESULT CALLBACK EnumTextureFormatsCallBack_E05BA0(LPDDPIXELFORMAT lpDDPixFmt, LPVOID lpContext);
+decltype(&EnumTextureFormatsCallBack_E05BA0) pEnumTextureFormatsCallBack_E05BA0 = 0x0;
+
 static HRESULT CALLBACK EnumTextureFormatsCallBack_E05BA0(LPDDPIXELFORMAT lpDDPixFmt, LPVOID lpContext)
 {
     S3DDevice* pDevice = (S3DDevice*)lpContext;
@@ -1692,6 +1674,8 @@ static HRESULT CALLBACK EnumTextureFormatsCallBack_E05BA0(LPDDPIXELFORMAT lpDDPi
         {
             return 0;
         }
+
+        memset(pTextureFormat, 0, sizeof(STextureFormat));
 
         ++pDevice->field_1C_num_texture_enums;
         pTextureFormat->field_28_flags = 0;
@@ -1713,7 +1697,7 @@ static HRESULT CALLBACK EnumTextureFormatsCallBack_E05BA0(LPDDPIXELFORMAT lpDDPi
 
         if (lpDDPixFmt->dwFlags & 1)
         {
-            pTextureFormat->field_28_flags |= 0x80;
+            pTextureFormat->field_28_flags |= 0x8000;
         }
 
         OutputDebugStringA("ENUM TEXTURE FORMAT - ");
@@ -1965,7 +1949,7 @@ decltype(&CreateD3DDevice_E01840) pCreateD3DDevice_E01840 = 0x0;
 
 signed int __stdcall CreateD3DDevice_E01840(SD3dStruct* pRenderer)
 {
-    //hack = pRenderer;
+    hack = pRenderer;
   
     //return pCreateD3DDevice_E01840(pRenderer);
 
@@ -2156,8 +2140,17 @@ static SHardwareTexture *__stdcall D3DTextureAllocate_2B560A0(SD3dStruct* pd3d, 
 
 decltype(&D3DTextureAllocate_2B560A0) pD3DTextureAllocate_2B560A0 = 0x0;
 
+struct WidthFlags
+{
+    int width;
+    int flags;
+};
+std::vector<WidthFlags> debugData;
+
 static SHardwareTexture *__stdcall D3DTextureAllocate_2B560A0(SD3dStruct* pd3d, int width, int height, int flags)
 {
+    debugData.emplace_back(WidthFlags{ width, flags });
+
    // STextureFormat* pTextureFormat = FindTextureFormat_2B55C60(pd3d, flags);
    // pTextureFormat->field_20_bBitCount = 0;
 
@@ -2228,16 +2221,12 @@ static DWORD gShift2_2B93E2C = 0;
 static DWORD rMask_2B959D4 = 0;
 static DWORD rShift2_2B63DD0 = 0;
 
-// Init2 related
-//static WORD* real_texture_sizes_word_107E0;
-//static WORD* real_CacheSizes_word_10810;
-//static DWORD* real_CacheSizes_dword_43EB0;
 
 // TODO
 static int Init2_2B51F40()
 {
     int flags = 0;
-    for (int i=0; i<12; i++)
+    for (int i=12; --i >= 0;  )
     {
         WORD width = texture_sizes_word_107E0[i];
         if (width & 0x400)
@@ -2256,12 +2245,14 @@ static int Init2_2B51F40()
             SCache* pCache = (SCache *)malloc(sizeof(SCache));
             memset(pCache, 0, sizeof(SCache));
 
+            // Correct num calls + args
             SHardwareTexture* pTexture = D3DTextureAllocate_2B560A0((*gD3dPtr_dword_21C85E0), width, width, flags);
             if (!pTexture)
             {
                 break;
             }
 
+            // probably correct, TODO CHECK ME
             SHardwareTexture* pTexture2 = TextureAllocLocked_2B560C0((*gD3dPtr_dword_21C85E0), width, width, flags);
             if (!pTexture2)
             {
@@ -2308,18 +2299,19 @@ static int Init2_2B51F40()
 
 
 
-        rShift2_2B93E8C = format.field_24_bBitIndex;            // 0
-        rMask_2B63DF0 = unknown[format.field_20_bBitCount];     // 1f
-        rShift_2B63DB0 = 8 - format.field_20_bBitCount;         // 5
+        rShift2_2B93E8C = format.field_24_bBitIndex;            // 0        // 43E8C
+        rMask_2B63DF0 = unknown[format.field_20_bBitCount];     // 1f       // 13DF0
+        rShift_2B63DB0 = 8 - format.field_20_bBitCount;         // 5        // 13DB0
 
-        gShift2_2B985EC = format.field_1C_gBitCount;            // 5
-        gMask_2B985FC = unknown[format.field_18_gBitIndex];     // 1f
-        gShift_2B93E34 = 16 - format.field_18_gBitIndex;        // b
+        gShift2_2B985EC = format.field_1C_gBitCount;            // 5        //
+        gMask_2B985FC = unknown[format.field_18_gBitIndex];     // 1f       //
+        gShift_2B93E34 = 16 - format.field_18_gBitIndex;        // b        //
 
-        bShift_2B63D58 = format.field_14_rBitIndex;             // a
-        bMask_2B93E30 = unknown[format.field_10_rBitCount];     // 1f
-        bShift2_2B63D6C = 24 - format.field_10_rBitCount;       // 13
+        bShift_2B63D58 = format.field_14_rBitIndex;             // a        //
+        bMask_2B93E30 = unknown[format.field_10_rBitCount];     // 1f       //
+        bShift2_2B63D6C = 24 - format.field_10_rBitCount;       // 13       //
     }
+
 
     {
         STextureFormat format = {};
@@ -2594,23 +2586,27 @@ decltype(&D3dTextureSetCurrent_2B56110) pD3dTextureSetCurrent_2B56110 = 0x0;
 
 static void InstallHooks()
 {
-    //DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
-   // DetourAttach((PVOID*)(&pD3DTextureAllocate_2B560A0), (PVOID)D3DTextureAllocate_2B560A0);
-    DetourAttach((PVOID*)(&pFindTextureFormat_2B55C60), (PVOID)FindTextureFormat_2B55C60);
+   // DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
+    //DetourAttach((PVOID*)(&pD3DTextureAllocate_2B560A0), (PVOID)D3DTextureAllocate_2B560A0);
+   // DetourAttach((PVOID*)(&pFindTextureFormat_2B55C60), (PVOID)FindTextureFormat_2B55C60);
 
     
-
+   // DetourAttach((PVOID*)(&pLightVerts_2B52A80), (PVOID)LightVerts_2B52A80);
+   
+    //DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
     /*
-    DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
     DetourAttach((PVOID*)(&pCacheFlushBatchRelated_2B52810), (PVOID)CacheFlushBatchRelated_2B52810);
     DetourAttach((PVOID*)(&pD3dTextureUnknown_2B561D0), (PVOID)D3dTextureUnknown_2B561D0);
    // DetourAttach((PVOID*)(&pgbh_DrawQuad), (PVOID)gbh_DrawQuad);
-    DetourAttach((PVOID*)(&pLightVerts_2B52A80), (PVOID)LightVerts_2B52A80);
+   
     DetourAttach((PVOID*)(&pTextureCache_E01EC0), (PVOID)TextureCache_E01EC0);
     DetourAttach((PVOID*)(&pD3dTextureSetCurrent_2B56110), (PVOID)D3dTextureSetCurrent_2B56110);
     DetourAttach((PVOID*)(&pSetRenderStates_E02960), (PVOID)SetRenderStates_E02960);
-    DetourAttach((PVOID*)(&pInit2_2B51F40), (PVOID)Init2_2B51F40);
     */
+   //DetourAttach((PVOID*)(&pInit2_2B51F40), (PVOID)Init2_2B51F40);
+
+   DetourAttach((PVOID*)(&pEnumTextureFormatsCallBack_E05BA0), (PVOID)EnumTextureFormatsCallBack_E05BA0);
+
 }
 
 
@@ -2621,12 +2617,15 @@ static void RebasePtrs(DWORD baseAddr)
     pLightVerts_2B52A80 = (decltype(&LightVerts_2B52A80))(baseAddr + 0x2A80);
     pD3DTextureAllocate_2B560A0 = (decltype(&D3DTextureAllocate_2B560A0))(baseAddr + 0x60A0);
     pFindTextureFormat_2B55C60 = (decltype(&FindTextureFormat_2B55C60))(baseAddr + 0x5C60);
+    pInit2_2B51F40 = (decltype(&Init2_2B51F40))(baseAddr + 0x1F40);
+    pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))(baseAddr + 0x01840);
+    pEnumTextureFormatsCallBack_E05BA0 = (decltype(&EnumTextureFormatsCallBack_E05BA0))(baseAddr + 0x5BA0);
 
     /*
-    pCreateD3DDevice_E01840 = (decltype(&CreateD3DDevice_E01840))(baseAddr + 0x01840);
+  
     pD3dTextureUnknown_2B561D0 = (decltype(&D3dTextureUnknown_2B561D0))(baseAddr + 0x61D0);
     pCacheFlushBatchRelated_2B52810 = (decltype(&CacheFlushBatchRelated_2B52810))(baseAddr + 0x2810);
-    pInit2_2B51F40 = (decltype(&Init2_2B51F40))(baseAddr + 0x1F40);
+
     pTextureCache_E01EC0 = (decltype(&TextureCache_E01EC0))(baseAddr + 0x01EC0);
     pD3dTextureSetCurrent_2B56110 = (decltype(&D3dTextureSetCurrent_2B56110))(baseAddr + 0x6110);
     pSetRenderStates_E02960 = (decltype(&SetRenderStates_E02960))(baseAddr + 0x2960);
@@ -2640,10 +2639,9 @@ static void RebasePtrs(DWORD baseAddr)
     //real_CacheSizes_dword_43EB0 = (DWORD*)(baseAddr + 0x43EB0);
 
 
-
     //renderStateCache_E43E24 = (decltype(renderStateCache_E43E24))(baseAddr + 0x43E24);
 
-    //DWORD off = baseAddr + 0x85E0;
+    //DWORD off = baseAddr + 0x485E0;
     //hack = (SD3dStruct*)(off);
     //gD3dPtr_dword_21C85E0 = &hack;
 }
@@ -2652,7 +2650,7 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
     HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
 
-    if (gProxyOnly)
+   // if (gProxyOnly)
     {
         PopulateS3DFunctions(hOld, gFuncs);
     }
@@ -2947,7 +2945,7 @@ void CC gbh_ResetLights()
 {
     if (gProxyOnly)
     {
-        gFuncs.pgbh_ResetLights();
+        //gFuncs.pgbh_ResetLights();
     }
     numLights_2B93E38 = 0;
 }

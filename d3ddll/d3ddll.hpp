@@ -84,12 +84,12 @@ struct SImage
     BYTE field_3;
     DWORD field_4;
     DWORD field_8;
-    WORD field_C_w;
-    BYTE field_E_h;
+    WORD field_C_width;
+    BYTE field_E_height;
     BYTE field_F;
     BYTE field_10;
     BYTE field_11;
-    BYTE* field_12;
+    DWORD field_12;
 };
 #pragma pack(pop)
 static_assert(sizeof(SImage) == 0x16, "Wrong sized SImage");

@@ -1275,10 +1275,70 @@ s32 CC Vid_FreeSurface(SVideo* pVideoDriver)
 
 s32 CC Vid_ClearScreen(SVideo* pVideoDriver, u8 aR, u8 aG, u8 aB, s32 aLeft, s32 aTop, s32 aRight, s32 aBottom)
 {
-    TRACE_ENTRYEXIT;
+   // TRACE_ENTRYEXIT;
 
-    // TODO
-    return 0;
+    auto v8 = pVideoDriver->field_5C;
+    auto v9 = 8 - pVideoDriver->field_64_r;
+
+    RECT dstRect = {};
+    dstRect.left = aLeft;
+    dstRect.top = aTop;
+    dstRect.right = aRight;
+    dstRect.bottom = aBottom;
+
+    // TODO: This is like what happens in TextureAllocate/Init2 in D3DDll
+
+    /*
+    v16.field_0 = 0;
+    v16.field_1 = 1;
+    v16.field_2 = 3;
+    v16.field_3 = 7;
+    v16.field_4 = 15;
+    v16.field_5 = 31;
+    v16.field_6 = 63;
+    v16.field_7 = 127;
+    LOBYTE(v16.field_8) = -1;
+    v10 = *(&v16.field_0 + v8);
+    */
+    auto v11 = pVideoDriver->field_6C;
+    auto v12 = pVideoDriver->field_58;
+
+    DDBLTFX bltFx = {};
+    bltFx.dwSize = 0x64;
+
+    /*
+    bltFx.dwFillColor =
+        ((((unsigned int)aG >> v9) & *(&v16.field_0 + pVideoDriver->field_64_r)) << pVideoDriver->field_60_g) 
+      | ((((unsigned int)aB >> (8 - v11)) & *(&v16.field_0 + v11)) << pVideoDriver->field_68_b) 
+      | ((((unsigned int)aR >> (8 - v8)) & v10) << v12);
+      */
+
+    HRESULT result = S_FALSE;
+    do
+    {
+        result = pVideoDriver->field_138_Surface->Blt(&dstRect, 0, 0, 1024, &bltFx);
+        if (!result)
+        {
+            break;
+        }
+        if (result == DDERR_SURFACELOST)
+        {
+            result = pVideoDriver->field_138_Surface->Restore();
+            auto bottom = pVideoDriver->field_4C_rect_bottom;
+            pVideoDriver->field_4_flags |= 0x10000000u;
+            auto right = pVideoDriver->field_48_rect_right;
+            dstRect.left = 0;
+            dstRect.top = 0;
+            dstRect.right = right;
+            dstRect.bottom = bottom;
+            if (result)
+            {
+                break;
+            }
+        }
+    } while (result == DDERR_WASSTILLDRAWING);
+
+    return result;
 }
 
 s32 CC Vid_SetGamma(SVideo* pVideoDriver, f32 a2, f32 a3, f32 a4)

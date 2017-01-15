@@ -14,15 +14,12 @@
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = false;      // Pass through all functions to real DLL
+static bool gProxyOnly = true;      // Pass through all functions to real DLL
 static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 static bool gRealPtrs = false;
 
 // Other
 static S3DFunctions gFuncs;
-static std::set<STexture*> gTextures;
-
-
 
 struct S3DDevice
 {
@@ -90,8 +87,9 @@ struct SGlobals
     DWORD dword_2B93EB0[12];
     DWORD dword_2B93EE0[12];
     DWORD g0x30Size_dword_E43F10[12]; // Cache hit counters
+
 };
-static SGlobals gGlobals;
+static SGlobals gGlobals = {};
 
 
 static DWORD bPointFilteringOn_E48604 = 0;
@@ -132,7 +130,7 @@ static float gfAmbient_E10838 = 1.0f;
 
 struct SImageTableEntry
 {
-    IDirectDrawSurface7* field_0_ddsurface;
+    BOOL bLoaded;
     DWORD field_4;
     DWORD field_8;
     IDirectDrawSurface7* field_C_pSurface;
@@ -154,10 +152,10 @@ static SPalData pals_2B63E00[16384];
 
 // Texture cache related
 struct SCache* cache_12_array_dword_E13D80[12] = {};
-static WORD texture_sizes_word_107E0[12] = {  8,16,32,64,128,256,1032,1040,1056,1088,1152,1280 };
+static WORD texture_sizes_word_107E0[12] = { 8, 16, 32, 64, 128, 256, 1032, 1040, 1056, 1088, 1152, 1280 };
 static WORD gCacheUnknown_107F8[12] = { 10, 62, 62, 88, 1, 0, 110, 126, 126, 40, 10, 0 };
 static WORD gCacheSizes_word_10810[12];
-static DWORD gCacheSizes_dword_43EB0[12]; 
+static DWORD gCacheSizes_dword_43EB0[12];
 
 struct SCache
 {
@@ -179,7 +177,7 @@ struct SCache
 };
 static_assert(sizeof(SCache) == 0x2C, "Wrong size SCache");
 
-STexture *__stdcall TextureCache_E01EC0(STexture *pTexture)
+STexture* __stdcall TextureCache_E01EC0(STexture* pTexture)
 {
     SCache* pCache = pTexture->field_1C_ptr;
     if (pCache)
@@ -391,7 +389,6 @@ int gbh_BeginScene()
     {
         gbSurfaceIsFreed_E43E18 = true;
         (*gpVideoDriver_E13DC8->field_84_from_initDLL->pVid_FreeSurface)(gpVideoDriver_E13DC8);
-        //pVid_FreeSurface(gpVideoDriver_E13DC8);
     }
     else
     {
@@ -413,24 +410,92 @@ int CC gbh_BlitBuffer(int a1, int a2, int a3, int a4, int a5, int a6)
     return 0;
 }
 
-char CC gbh_BlitImage(int a1, int a2, int a3, int a4, int a5, int a6, int a7)
+char CC gbh_BlitImage(int imageIndex, int srcLeft, int srcTop, int srcRight, int srcBottom, int dstX, int dstY)
 {
-    //__debugbreak();
     if (gProxyOnly)
     {
-        return gFuncs.pgbh_BlitImage(a1, a2, a3, a4, a5, a6, a7);
+        return gFuncs.pgbh_BlitImage(imageIndex, srcLeft, srcTop, srcRight, srcBottom, dstX, dstY);
     }
-    return 0;
+
+    int result = 0;
+    if (imageIndex <= gpImageTableCount_dword_E13898)
+    {
+        if (!gpImageTable_dword_E13894[imageIndex].bLoaded)
+        {
+            return -1;
+        }
+        /*
+        if (srcLeft < 0
+            || srcTop < 0
+            || srcRight < 0
+            || srcBottom < 0
+            || srcLeft > gpImageTable_dword_E13894[imageIndex].field_4
+            || srcTop > gpImageTable_dword_E13894[imageIndex].field_8
+            || srcRight > gpImageTable_dword_E13894[imageIndex].field_4
+            || srcBottom > gpImageTable_dword_E13894[imageIndex].field_8)
+        {
+            result = -2;
+        }
+        else*/ if (dstX < 0 || dstY < 0
+            || (dstX - srcLeft + srcRight) > gpVideoDriver_E13DC8->field_48_rect_right
+            || (dstY - srcTop + srcBottom) > gpVideoDriver_E13DC8->field_4C_rect_bottom)
+        {
+            result = -3;
+        }
+        else if (gpImageTable_dword_E13894[imageIndex].field_C_pSurface->IsLost())
+        {
+            gpImageTable_dword_E13894[imageIndex].field_C_pSurface->Release();
+            result = -10;
+            gpImageTable_dword_E13894[imageIndex].field_C_pSurface = nullptr;
+        }
+        else
+        {
+            RECT srcRect = {};
+            srcRect.left = srcLeft;
+            srcRect.top = srcTop;
+            srcRect.right = srcRight;
+            srcRect.bottom = srcBottom;
+
+            RECT dstRect = {};
+            dstRect.left = dstX;
+            dstRect.top = dstY;
+            dstRect.right = dstX - srcLeft + srcRight;
+            dstRect.bottom = dstY - srcTop + srcBottom;
+
+            if (gpVideoDriver_E13DC8->field_138_Surface)
+            {
+                result = gpVideoDriver_E13DC8->field_138_Surface->Blt(
+                    &dstRect,
+                   (LPDIRECTDRAWSURFACE4)gpImageTable_dword_E13894[imageIndex].field_C_pSurface,
+                    &srcRect,
+                    DDBLT_WAIT,
+                    0) != 0 ? 0xFC : 0;
+            }
+            else
+            {
+                result = -4;
+            }
+        }
+    }
+    else
+    {
+        result = -1;
+    }
+    return result;
+
 }
 
+// TODO
 void CC gbh_CloseDLL()
 {
 //    __debugbreak();
 }
 
+// TODO
 void CC gbh_CloseScreen(SVideo* pVideo)
 {
 //    __debugbreak();
+    (*pVideo->field_84_from_initDLL->pVid_CloseScreen)(pVideo);
 }
 
 unsigned int CC gbh_Convert16BitGraphic(int a1, unsigned int a2, WORD *a3, signed int a4)
@@ -1154,7 +1219,6 @@ double CC gbh_EndScene()
     if (gbSurfaceIsFreed_E43E18 == 1)
     {
         (*gpVideoDriver_E13DC8->field_84_from_initDLL->pVid_GetSurface)(gpVideoDriver_E13DC8);
-        //pVid_GetSurface(gpVideoDriver_E13DC8);
     }
     double result = qword_2B60848 / k1_2B638A0;
     gSceneTime_2B93EAC = qword_2B60848 / k1_2B638A0;// always 0 / 1 ?
@@ -1163,12 +1227,28 @@ double CC gbh_EndScene()
 
 int CC gbh_FreeImageTable()
 {
-   // __debugbreak();
-   // return 0;
     if (gProxyOnly)
     {
         return gFuncs.pgbh_FreeImageTable();
     }
+
+    if (gpImageTableCount_dword_E13898 <= 0)
+    {
+        free(gpImageTable_dword_E13894);
+    }
+    else
+    {
+        for (int idx = 0; idx < gpImageTableCount_dword_E13898; idx++)
+        {
+            if (gpImageTable_dword_E13894[idx].bLoaded)
+            {
+                gpImageTable_dword_E13894[idx].field_C_pSurface->Release();
+                gpImageTable_dword_E13894[idx].bLoaded = FALSE;
+            }
+        }
+    }
+    free(gpImageTable_dword_E13894);
+    gpImageTable_dword_E13894 = 0;
     return 0;
 }
 
@@ -1190,10 +1270,8 @@ void CC gbh_FreeTexture(STexture* pTexture)
         return gFuncs.pgbh_FreeTexture(pTexture);
     }
 
-    // TODO: Other stuff required
-   // free(pTexture);
-    gTextures.erase(pTexture);
-    //gFuncs.pgbh_FreeTexture(pTexture);
+    TextureCache_E01EC0(pTexture);
+    free(pTexture);
 }
 
 u32* CC gbh_GetGlobals()
@@ -2648,6 +2726,7 @@ static void RebasePtrs(DWORD baseAddr)
 
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
+    
     HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
 
    // if (gProxyOnly)
@@ -2674,7 +2753,7 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
         auto r = gFuncs.pgbh_InitDLL(pVideoDriver);
         return r;
     }
-
+    
 
     gpVideoDriver_E13DC8 = pVideoDriver;
     PopulateSVideoFunctions(pVideoDriver->field_7C_self_dll_handle, gVideoDriverFuncs);
@@ -2695,11 +2774,7 @@ signed int CC gbh_InitImageTable(int tableSize)
     {
         return gFuncs.pgbh_InitImageTable(tableSize);
     }
-    return 0;
-
-    __debugbreak();
-
-    /*
+   
     gpImageTable_dword_E13894 = reinterpret_cast<SImageTableEntry*>(malloc(sizeof(SImageTableEntry) * tableSize));
     if (!gpImageTable_dword_E13894)
     {
@@ -2708,7 +2783,6 @@ signed int CC gbh_InitImageTable(int tableSize)
     memset(gpImageTable_dword_E13894, 0, sizeof(SImageTableEntry) * tableSize);
     gpImageTableCount_dword_E13898 = tableSize;
     return 0;
-    */
 }
 
 signed int CC gbh_LoadImage(SImage* pToLoad)
@@ -2717,16 +2791,14 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
     {
         return gFuncs.pgbh_LoadImage(pToLoad);
     }
-    return 0;
 
-    /*
     DWORD freeImageIndex = 0;
     if (gpImageTableCount_dword_E13898 > 0)
     {
         SImageTableEntry* pFreeImage = gpImageTable_dword_E13894;
         do
         {
-            if (!pFreeImage->field_0_ddsurface)
+            if (!pFreeImage->bLoaded)
             {
                 break;
             }
@@ -2751,14 +2823,65 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
             {
                 surfaceDesc.ddsCaps.dwCaps = 2112;
             }
-            
-            DWORD idx = 16 * freeImageIndex;
+
+            surfaceDesc.dwWidth = pToLoad->field_C_width;
+            surfaceDesc.dwHeight = pToLoad->field_E_height;
 
             // TODO: Partially implemented here
-            if (gpVideoDriver_E13DC8->field_120_IDDraw4->CreateSurface(&surfaceDesc,
-                (LPDIRECTDRAWSURFACE4 *)gpImageTable_dword_E13894->field_C_pSurface + idx, 0))
+            if (FAILED(gpVideoDriver_E13DC8->field_120_IDDraw4->CreateSurface(&surfaceDesc,
+                (LPDIRECTDRAWSURFACE4 *)&gpImageTable_dword_E13894[freeImageIndex].field_C_pSurface, 0)))
             {
-               // result = -3;
+                return -3;
+            }
+            else
+            {
+                if (FAILED(gpImageTable_dword_E13894[freeImageIndex].field_C_pSurface->Lock(0,
+                    &surfaceDesc,
+                    2049,
+                    0)))
+                {
+                    return -3;
+                }
+                else
+                {
+                    STextureFormat textureFormat = {};
+                    ConvertPixelFormat_2B55A10(&textureFormat, &surfaceDesc.ddpfPixelFormat);
+
+                    if (pToLoad->field_C_width)
+                    {
+                        // TODO: Populate pixel data
+                        DWORD sourcePixelIndex = 0;
+                        BYTE* pPixels = (BYTE*)surfaceDesc.lpSurface;
+                        for (int y = 0; y < surfaceDesc.dwHeight; y++)
+                        {
+                            for (int x = 0; x < surfaceDesc.dwWidth; x++)
+                            {
+                                const DWORD surfaceIndex = (x * 2 + (y*(surfaceDesc.lPitch)));
+                                //const BYTE palIndex = pixelData[sourcePixelIndex++];
+
+                                WORD* p = (WORD*)(&pPixels[surfaceIndex]);
+
+                                BYTE* pSrc = (BYTE*)&pToLoad->field_12;
+                                pSrc += pToLoad->field_0;
+
+                                *p = ((WORD*)pSrc)[sourcePixelIndex];
+                                //*p = 0xdead;
+                            }
+
+                            //const DWORD val = palSize - textureW;
+                            //sourcePixelIndex += val;
+                            sourcePixelIndex++;
+                        }
+                    }
+
+                    gpImageTable_dword_E13894[freeImageIndex].field_C_pSurface->Unlock(NULL);
+
+                    gpImageTable_dword_E13894[freeImageIndex].bLoaded = TRUE;
+                    gpImageTable_dword_E13894[freeImageIndex].field_4 = surfaceDesc.dwWidth;
+                    gpImageTable_dword_E13894[freeImageIndex].field_8 = surfaceDesc.dwHeight;
+
+                    return freeImageIndex;
+                }
             }
         }
 
@@ -2767,7 +2890,7 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
     else
     {
         return -1;
-    }*/
+    }
 }
 
 STexture* CC gbh_LockTexture(STexture* pTexture)
@@ -2785,7 +2908,7 @@ STexture* CC gbh_LockTexture(STexture* pTexture)
 
 void CC gbh_Plot(int a1, int a2, int a3, int a4)
 {
-    //__debugbreak();
+    __debugbreak();
 }
 
 int CC gbh_PrintBitmap(int a1, int a2)
@@ -2855,10 +2978,6 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
                 ((local_gMask_2B63DB4 & (g >> local_gShift_2B93E84)) << local_gShift2_2B93E90) 
               | ((local_rMask_2B63DB8 & (r >> local_rShift_2B93E44)) << local_rShift2_2B63D60);
 
-
-        // TEMP HACK
-        //pAllocatedData[i] = *pData;
-
         pData += 64; // Pal data is stored in columns not rows
     }
 
@@ -2884,10 +3003,6 @@ unsigned int CC gbh_RegisterPalette(int paltId, DWORD* pData)
         pSecond[i] = ((local_bMask_2B60828 & b) << local_bShift_2B93E00) 
             | ((local_gMask_2B63DB4 & (g >> local_gShift_2B93E84)) << local_gShift2_2B93E90) 
             | ((local_rMask_2B63DB8 & (r >> local_rShift_2B93E44)) << local_rShift2_2B63D60);
-
-
-        // TEMP HACK
-       // pAllocatedData[i] = *pData;
 
         pData += 64; // Pal data is stored in columns not rows
     }

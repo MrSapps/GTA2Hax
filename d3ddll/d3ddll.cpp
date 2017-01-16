@@ -14,7 +14,7 @@
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = true;      // Pass through all functions to real DLL
+static bool gProxyOnly = false;      // Pass through all functions to real DLL
 static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 static bool gRealPtrs = false;
 
@@ -485,17 +485,74 @@ char CC gbh_BlitImage(int imageIndex, int srcLeft, int srcTop, int srcRight, int
 
 }
 
-// TODO
-void CC gbh_CloseDLL()
+static int __stdcall FreeD3dDThings_E016E0(SD3dStruct* pD3d);
+
+static void CleanUpD3d()
 {
-//    __debugbreak();
+    for (int idx = 0; idx < 12; idx++)
+    {
+        auto pCache = cache_12_array_dword_E13D80[idx];
+        if (pCache)
+        {
+            SCache* pCurrentCache = nullptr;
+            do
+            {
+                pCurrentCache = pCache->field_1C_pNext;
+                if (pCache->field_18_pSTexture)
+                {
+                    TextureCache_E01EC0(pCache->field_18_pSTexture);
+                }
+
+                auto nextPtr = pCache->field_1C_pNext;
+                if (nextPtr)
+                {
+                    nextPtr->field_20_pCache = 0;
+                    cache_12_array_dword_E13D80[idx] = pCache->field_1C_pNext;
+                }
+                free(pCache);
+                pCache = pCurrentCache;
+            } while (pCurrentCache);
+        }
+        cache_12_array_dword_E13D80[idx] = 0;
+        ++idx;
+    }
+
+    if (*gD3dPtr_dword_21C85E0)
+    {
+        FreeD3dDThings_E016E0(*gD3dPtr_dword_21C85E0);
+    }
+    (*gD3dPtr_dword_21C85E0) = 0;
 }
 
-// TODO
+static decltype(&Vid_CloseScreen) pOldCloseScreen = nullptr;
+static decltype(&Vid_SetMode) pOldSetMode = nullptr;
+
+void CC gbh_CloseDLL()
+{
+    auto pVideoDriver = (*gD3dPtr_dword_21C85E0)->field_0_pVideoDriver;
+
+    CleanUpD3d();
+
+    pOldCloseScreen(pVideoDriver);
+
+    *pVideoDriver->field_84_from_initDLL->pVid_CloseScreen = pOldCloseScreen;
+    //*pVideoDriver->field_84_from_initDLL->pVid_GetSurface = gVideoDriverFuncs.pVid_GetSurface;
+    //*pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = gVideoDriverFuncs.pVid_FreeSurface;
+    *pVideoDriver->field_84_from_initDLL->pVid_SetMode = pOldSetMode;
+
+    /*
+    free(gPtr_dword_E13864); // TODO: Lighting table
+    gPtr_dword_E13864 = 0;
+    free(gPtr_dword_E43E20); // TODO: Allocated but never used
+    gPtr_dword_E43E20 = 0;*/
+
+}
+
 void CC gbh_CloseScreen(SVideo* pVideo)
 {
-//    __debugbreak();
-    (*pVideo->field_84_from_initDLL->pVid_CloseScreen)(pVideo);
+    CleanUpD3d();
+    pOldCloseScreen(pVideo);
+    //(*pVideo->field_84_from_initDLL->pVid_CloseScreen)(pVideo);
 }
 
 unsigned int CC gbh_Convert16BitGraphic(int a1, unsigned int a2, WORD *a3, signed int a4)
@@ -2724,6 +2781,7 @@ static void RebasePtrs(DWORD baseAddr)
     //gD3dPtr_dword_21C85E0 = &hack;
 }
 
+
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
     
@@ -2758,10 +2816,12 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
     gpVideoDriver_E13DC8 = pVideoDriver;
     PopulateSVideoFunctions(pVideoDriver->field_7C_self_dll_handle, gVideoDriverFuncs);
     
-    
+    pOldCloseScreen = (*pVideoDriver->field_84_from_initDLL->pVid_CloseScreen);
+    pOldSetMode = (*pVideoDriver->field_84_from_initDLL->pVid_SetMode);
+
     *pVideoDriver->field_84_from_initDLL->pVid_CloseScreen = gbh_CloseScreen;
-    *pVideoDriver->field_84_from_initDLL->pVid_GetSurface = gVideoDriverFuncs.pVid_GetSurface;
-    *pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = gVideoDriverFuncs.pVid_FreeSurface;
+    //*pVideoDriver->field_84_from_initDLL->pVid_GetSurface = gVideoDriverFuncs.pVid_GetSurface;
+    //*pVideoDriver->field_84_from_initDLL->pVid_FreeSurface = gVideoDriverFuncs.pVid_FreeSurface;
     *pVideoDriver->field_84_from_initDLL->pVid_SetMode = gbh_SetMode_E04D80;
     
     return 1;

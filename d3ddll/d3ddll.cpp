@@ -8,6 +8,7 @@
 #include <algorithm>
 #include "detours.h"
 #include <assert.h>
+#include "../DmaVideo/logger.hpp"
 
 #define BYTEn(x, n)   (*((BYTE*)&(x)+n))
 #define BYTE1(x)   BYTEn(x,  1)
@@ -514,7 +515,6 @@ static void CleanUpD3d()
             } while (pCurrentCache);
         }
         cache_12_array_dword_E13D80[idx] = 0;
-        ++idx;
     }
 
     if (*gD3dPtr_dword_21C85E0)
@@ -529,6 +529,8 @@ static decltype(&Vid_SetMode) pOldSetMode = nullptr;
 
 void CC gbh_CloseDLL()
 {
+    TRACE_ENTRYEXIT;
+
     auto pVideoDriver = (*gD3dPtr_dword_21C85E0)->field_0_pVideoDriver;
 
     CleanUpD3d();
@@ -550,6 +552,8 @@ void CC gbh_CloseDLL()
 
 void CC gbh_CloseScreen(SVideo* pVideo)
 {
+    TRACE_ENTRYEXIT;
+
     CleanUpD3d();
     pOldCloseScreen(pVideo);
     //(*pVideo->field_84_from_initDLL->pVid_CloseScreen)(pVideo);
@@ -2591,6 +2595,8 @@ static signed int Init_E02340()
 
 s32 CC gbh_Init(int a1)
 {
+    TRACE_ENTRYEXIT;
+
     if (gProxyOnly)
     {
         auto r = gFuncs.pgbh_Init(a1);
@@ -2784,7 +2790,9 @@ static void RebasePtrs(DWORD baseAddr)
 
 u32 CC gbh_InitDLL(SVideo* pVideoDriver)
 {
-    
+    TRACE_ENTRYEXIT;
+
+    /*
     HMODULE hOld = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_d3ddll.dll");
 
    // if (gProxyOnly)
@@ -2811,7 +2819,8 @@ u32 CC gbh_InitDLL(SVideo* pVideoDriver)
         auto r = gFuncs.pgbh_InitDLL(pVideoDriver);
         return r;
     }
-    
+    */
+
 
     gpVideoDriver_E13DC8 = pVideoDriver;
     PopulateSVideoFunctions(pVideoDriver->field_7C_self_dll_handle, gVideoDriverFuncs);

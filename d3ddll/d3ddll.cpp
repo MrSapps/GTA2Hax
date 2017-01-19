@@ -15,9 +15,9 @@
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = true;      // Pass through all functions to real DLL
-static bool gDetours = true;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
-static bool gRealPtrs = true;
+static bool gProxyOnly = false;      // Pass through all functions to real DLL
+static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
+static bool gRealPtrs = false;
 
 // Other
 static S3DFunctions gFuncs;
@@ -137,8 +137,8 @@ struct SImageTableEntry
     IDirectDrawSurface4* field_C_pSurface;
 };
 
-static SImageTableEntry** gpImageTable_dword_E13894 = nullptr;
-static DWORD* gpImageTableCount_dword_E13898 = nullptr;
+static SImageTableEntry* gpImageTable_dword_E13894 = nullptr;
+static DWORD gpImageTableCount_dword_E13898 = 0;
 
 static u32 gTextureId_dword_E13D54 = 0;
 
@@ -414,79 +414,76 @@ int CC gbh_BlitBuffer(int a1, int a2, int a3, int a4, int a5, int a6)
 
 char CC gbh_BlitImage(int imageIndex, int srcLeft, int srcTop, int srcRight, int srcBottom, int dstX, int dstY)
 {
-    //return 0;
-
     if (gProxyOnly)
     {
-       // return gFuncs.pgbh_BlitImage(imageIndex, srcLeft, srcTop, srcRight, srcBottom, dstX, dstY);
+        // return gFuncs.pgbh_BlitImage(imageIndex, srcLeft, srcTop, srcRight, srcBottom, dstX, dstY);
     }
 
     int result = 0;
-   // if (imageIndex <= (*gpImageTableCount_dword_E13898))
+    if (imageIndex > gpImageTableCount_dword_E13898)
     {
-        if (!(*gpImageTable_dword_E13894)[imageIndex].bLoaded)
-        {
-            return -1;
-        }
-        /*
-        if (srcLeft < 0
-            || srcTop < 0
-            || srcRight < 0
-            || srcBottom < 0
-            || srcLeft > (*gpImageTable_dword_E13894)[imageIndex].field_4
-            || srcTop > (*gpImageTable_dword_E13894)[imageIndex].field_8
-            || srcRight > (*gpImageTable_dword_E13894)[imageIndex].field_4
-            || srcBottom > (*gpImageTable_dword_E13894)[imageIndex].field_8)
-        {
-            result = -2;
-        }
-        else if (dstX < 0 || dstY < 0
-            || (dstX - srcLeft + srcRight) > gpVideoDriver_E13DC8->field_48_rect_right
-            || (dstY - srcTop + srcBottom) > gpVideoDriver_E13DC8->field_4C_rect_bottom)
-        {
-            result = -3;
-        }
-        else */if ((*gpImageTable_dword_E13894)[imageIndex].field_C_pSurface->IsLost())
-        {
-            (*gpImageTable_dword_E13894)[imageIndex].field_C_pSurface->Release();
-            result = -10;
-            (*gpImageTable_dword_E13894)[imageIndex].field_C_pSurface = nullptr;
-        }
-        else
-        {
-            RECT srcRect = {};
-            srcRect.left = srcLeft;
-            srcRect.top = srcTop;
-            srcRect.right = srcRight;
-            srcRect.bottom = srcBottom;
-
-            RECT dstRect = {};
-            dstRect.left = dstX;
-            dstRect.top = dstY;
-            dstRect.right = dstX - srcLeft + srcRight;
-            dstRect.bottom = dstY - srcTop + srcBottom;
-
-            if (gpVideoDriver_E13DC8->field_138_Surface)
-            {
-                result = gpVideoDriver_E13DC8->field_138_Surface->Blt(
-                    &dstRect,
-                   (LPDIRECTDRAWSURFACE4)(*gpImageTable_dword_E13894)[imageIndex].field_C_pSurface,
-                    &srcRect,
-                    DDBLT_WAIT,
-                    0) != 0 ? 0xFC : 0;
-            }
-            else
-            {
-                result = -4;
-            }
-        }
+        result = -1;
     }
-    //else
+
+    if (!gpImageTable_dword_E13894[imageIndex].bLoaded)
     {
-        //result = -1;
+        return -1;
     }
-    return result;
 
+    if (srcLeft < 0
+        || srcTop < 0
+        || srcRight < 0
+        || srcBottom < 0
+        || srcLeft >gpImageTable_dword_E13894[imageIndex].field_4_w
+        || srcTop >gpImageTable_dword_E13894[imageIndex].field_8_h
+        || srcRight >gpImageTable_dword_E13894[imageIndex].field_4_w
+        || srcBottom >gpImageTable_dword_E13894[imageIndex].field_8_h)
+    {
+        return -2;
+    }
+
+    if (dstX < 0 || dstY < 0
+        || (dstX - srcLeft + srcRight) > gpVideoDriver_E13DC8->field_48_rect_right
+        || (dstY - srcTop + srcBottom) > gpVideoDriver_E13DC8->field_4C_rect_bottom)
+    {
+        return -3;
+    }
+
+    if (gpImageTable_dword_E13894[imageIndex].field_C_pSurface->IsLost())
+    {
+        gpImageTable_dword_E13894[imageIndex].field_C_pSurface->Release();
+        gpImageTable_dword_E13894[imageIndex].field_C_pSurface = nullptr;
+        return  -10;
+    }
+
+    RECT srcRect = {};
+    srcRect.left = srcLeft;
+    srcRect.top = srcTop;
+    srcRect.right = srcRight;
+    srcRect.bottom = srcBottom;
+
+    RECT dstRect = {};
+    dstRect.left = dstX;
+    dstRect.top = dstY;
+    dstRect.right = dstX - srcLeft + srcRight;
+    dstRect.bottom = dstY - srcTop + srcBottom;
+
+    if (!gpVideoDriver_E13DC8->field_138_Surface)
+    {
+        return -4;
+    }
+
+    if (FAILED(gpVideoDriver_E13DC8->field_138_Surface->Blt(
+        &dstRect,
+        (LPDIRECTDRAWSURFACE4)gpImageTable_dword_E13894[imageIndex].field_C_pSurface,
+        &srcRect,
+        DDBLT_WAIT,
+        0)))
+    {
+        return -4;
+    }
+
+    return 0;
 }
 
 static int __stdcall FreeD3dDThings_E016E0(SD3dStruct* pD3d);
@@ -1302,23 +1299,23 @@ int CC gbh_FreeImageTable()
       //  return gFuncs.pgbh_FreeImageTable();
     }
 
-    if ((*gpImageTableCount_dword_E13898) <= 0)
+    if (gpImageTableCount_dword_E13898 <= 0)
     {
-        free((*gpImageTable_dword_E13894));
+        free(gpImageTable_dword_E13894);
     }
     else
     {
-        for (int idx = 0; idx < (*gpImageTableCount_dword_E13898); idx++)
+        for (int idx = 0; idx < gpImageTableCount_dword_E13898; idx++)
         {
-            if ((*gpImageTable_dword_E13894)[idx].bLoaded)
+            if (gpImageTable_dword_E13894[idx].bLoaded)
             {
-                (*gpImageTable_dword_E13894)[idx].field_C_pSurface->Release();
-                (*gpImageTable_dword_E13894)[idx].bLoaded = FALSE;
+                gpImageTable_dword_E13894[idx].field_C_pSurface->Release();
+                gpImageTable_dword_E13894[idx].bLoaded = FALSE;
             }
         }
     }
-    free((*gpImageTable_dword_E13894));
-    (*gpImageTable_dword_E13894) = 0;
+    free(gpImageTable_dword_E13894);
+    gpImageTable_dword_E13894 = 0;
     return 0;
 }
 
@@ -2795,11 +2792,6 @@ static void RebasePtrs(DWORD baseAddr)
     //hack = (SD3dStruct*)(off);
     //gD3dPtr_dword_21C85E0 = &hack;
 
-    DWORD off = baseAddr + 0x13894;
-    gpImageTable_dword_E13894 = (SImageTableEntry**)(off);
-
-    off = baseAddr + 0x13898;
-    gpImageTableCount_dword_E13898 = (DWORD*)off;
 }
 
 
@@ -2862,13 +2854,13 @@ signed int CC gbh_InitImageTable(int tableSize)
         //return ret;
     }
    
-    (*gpImageTable_dword_E13894) = reinterpret_cast<SImageTableEntry*>(malloc(sizeof(SImageTableEntry) * tableSize));
-    if (!(*gpImageTable_dword_E13894))
+    gpImageTable_dword_E13894 = reinterpret_cast<SImageTableEntry*>(malloc(sizeof(SImageTableEntry) * tableSize));
+    if (!gpImageTable_dword_E13894)
     {
         return -1;
     }
-    memset((*gpImageTable_dword_E13894), 0, sizeof(SImageTableEntry) * tableSize);
-    (*gpImageTableCount_dword_E13898) = tableSize;
+    memset(gpImageTable_dword_E13894, 0, sizeof(SImageTableEntry) * tableSize);
+    gpImageTableCount_dword_E13898 = tableSize;
     return 0;
 }
 
@@ -2881,9 +2873,9 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
     }
 
     DWORD freeImageIndex = 0;
-    if ((*gpImageTableCount_dword_E13898) > 0)
+    if (gpImageTableCount_dword_E13898 > 0)
     {
-        SImageTableEntry* pFreeImage = (*gpImageTable_dword_E13894);
+        SImageTableEntry* pFreeImage = gpImageTable_dword_E13894;
         do
         {
             if (!pFreeImage->bLoaded)
@@ -2892,10 +2884,10 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
             }
             ++freeImageIndex;
             ++pFreeImage;
-        } while (freeImageIndex < (*gpImageTableCount_dword_E13898));
+        } while (freeImageIndex < gpImageTableCount_dword_E13898);
     }
 
-    if (freeImageIndex >= (*gpImageTableCount_dword_E13898))
+    if (freeImageIndex >= gpImageTableCount_dword_E13898)
     {
         return -1;
     }
@@ -2919,13 +2911,13 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
 
     
     if (FAILED(gpVideoDriver_E13DC8->field_120_IDDraw4->CreateSurface(&surfaceDesc,
-        &(*gpImageTable_dword_E13894)[freeImageIndex].field_C_pSurface, 0)))
+        &gpImageTable_dword_E13894[freeImageIndex].field_C_pSurface, 0)))
     {
         return -3;
     }
     
 
-    if (FAILED((*gpImageTable_dword_E13894)[freeImageIndex].field_C_pSurface->Lock(0,
+    if (FAILED(gpImageTable_dword_E13894[freeImageIndex].field_C_pSurface->Lock(0,
         &surfaceDesc,
         DDLOCK_NOSYSLOCK | DDLOCK_WAIT,
         0)))
@@ -2959,15 +2951,15 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
         }
     }
 
-    if (FAILED((*gpImageTable_dword_E13894)[freeImageIndex].field_C_pSurface->Unlock(NULL)))
+    if (FAILED(gpImageTable_dword_E13894[freeImageIndex].field_C_pSurface->Unlock(NULL)))
     {
         // TODO: Real game bug, should be free'ing surface here?
         return -3;
     }
 
-    (*gpImageTable_dword_E13894)[freeImageIndex].bLoaded = TRUE;
-    (*gpImageTable_dword_E13894)[freeImageIndex].field_4_w = surfaceDesc.dwWidth;
-    (*gpImageTable_dword_E13894)[freeImageIndex].field_8_h = surfaceDesc.dwHeight;
+    gpImageTable_dword_E13894[freeImageIndex].bLoaded = TRUE;
+    gpImageTable_dword_E13894[freeImageIndex].field_4_w = surfaceDesc.dwWidth;
+    gpImageTable_dword_E13894[freeImageIndex].field_8_h = surfaceDesc.dwHeight;
 
     return freeImageIndex;
 }

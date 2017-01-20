@@ -15,7 +15,7 @@
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = false;      // Pass through all functions to real DLL
+static bool gProxyOnly = true;      // Pass through all functions to real DLL
 static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 static bool gRealPtrs = false;
 
@@ -126,6 +126,8 @@ static int gScreenTable_dword_E43F40[1700];
 static DWORD dword_2B93E88 = 0;
 static DWORD dword_2B93E28 = 0;
 
+
+
 static DWORD numLights_2B93E38 = 0;
 static float gfAmbient_E10838 = 1.0f;
 
@@ -136,6 +138,7 @@ struct SImageTableEntry
     DWORD field_8_h;
     IDirectDrawSurface4* field_C_pSurface;
 };
+static_assert(sizeof(SImageTableEntry) == 0x10, "Wrong size SImageTableEntry");
 
 static SImageTableEntry* gpImageTable_dword_E13894 = nullptr;
 static DWORD gpImageTableCount_dword_E13898 = 0;
@@ -336,11 +339,13 @@ int* CC MakeScreenTable(int value, int elementSize, unsigned int size)
     return result;
 }
 
-int CC gbh_AddLight(int a1)
+int CC gbh_AddLight(SLight* pLight)
 {
+    pLight->field_0 = 0xfff1ff9f; // Last 2 bytes are like radius and/or flags?
+    pLight->field_10 = 0x0000ffff; // Seems to be the light colour
     if (gProxyOnly)
     {
-        //return gFuncs.pgbh_AddLight(a1);
+        return gFuncs.pgbh_AddLight(pLight);
     }
     return 0;
 }
@@ -416,7 +421,7 @@ char CC gbh_BlitImage(int imageIndex, int srcLeft, int srcTop, int srcRight, int
 {
     if (gProxyOnly)
     {
-        // return gFuncs.pgbh_BlitImage(imageIndex, srcLeft, srcTop, srcRight, srcBottom, dstX, dstY);
+         return gFuncs.pgbh_BlitImage(imageIndex, srcLeft, srcTop, srcRight, srcBottom, dstX, dstY);
     }
 
     int result = 0;
@@ -1147,7 +1152,7 @@ s32 CC gbh_DrawTilePart(unsigned int flags, STexture* pTexture, Vert* pData, int
 {
     if (gProxyOnly)
     {
-        // return gFuncs.pgbh_DrawTilePart(flags, pTexture, pData, diffuseColour);
+         return gFuncs.pgbh_DrawTilePart(flags, pTexture, pData, diffuseColour);
     }
 
     auto oldFlags = flags;
@@ -1296,7 +1301,7 @@ int CC gbh_FreeImageTable()
 {
     if (gProxyOnly)
     {
-      //  return gFuncs.pgbh_FreeImageTable();
+        return gFuncs.pgbh_FreeImageTable();
     }
 
     if (gpImageTableCount_dword_E13898 <= 0)
@@ -2850,8 +2855,8 @@ signed int CC gbh_InitImageTable(int tableSize)
 {
     if (gProxyOnly)
     {
-        //auto ret = gFuncs.pgbh_InitImageTable(tableSize);
-        //return ret;
+        auto ret = gFuncs.pgbh_InitImageTable(tableSize);
+        return ret;
     }
    
     gpImageTable_dword_E13894 = reinterpret_cast<SImageTableEntry*>(malloc(sizeof(SImageTableEntry) * tableSize));
@@ -2868,8 +2873,8 @@ signed int CC gbh_LoadImage(SImage* pToLoad)
 {
     if (gProxyOnly)
     {
-        //auto ret = gFuncs.pgbh_LoadImage(pToLoad);
-       // return ret;
+        auto ret = gFuncs.pgbh_LoadImage(pToLoad);
+        return ret;
     }
 
     DWORD freeImageIndex = 0;
@@ -3131,7 +3136,7 @@ void CC gbh_ResetLights()
 {
     if (gProxyOnly)
     {
-        //gFuncs.pgbh_ResetLights();
+        gFuncs.pgbh_ResetLights();
     }
     numLights_2B93E38 = 0;
 }

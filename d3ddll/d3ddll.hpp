@@ -44,11 +44,21 @@ struct Verts
     Vert mVerts[4];
 };
 
+struct SLight
+{
+    DWORD field_0;  // ?? looking at map format maybe on/off time and strength/radius?
+    float field_4;  // x ?
+    float field_8;  // y ?
+    float field_C;  // z ?
+    DWORD field_10; // ARGB?
+};
+static_assert(sizeof(SLight) == 0x14, "Wrong size SLight");
+
 void CC ConvertColourBank(s32 unknown);
 int CC DrawLine(int a1, int a2, int a3, int a4, int a5);
 void CC SetShadeTableA(int a1, int a2, int a3, int a4, int a5);
 int* CC MakeScreenTable(int result, int a2, unsigned int a3);
-int CC gbh_AddLight(int a1);
+int CC gbh_AddLight(SLight* pLight);
 char CC gbh_AssignPalette(STexture* pTexture, int palId);
 void CC gbh_BeginLevel();
 int gbh_BeginScene();

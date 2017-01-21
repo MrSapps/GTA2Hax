@@ -16,7 +16,7 @@
 #pragma comment(lib, "dxguid.lib")
 
 static bool gProxyOnly = true;      // Pass through all functions to real DLL
-static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
+static bool gDetours = true;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 static bool gRealPtrs = true;
 
 // Other
@@ -2726,7 +2726,7 @@ static void InstallHooks()
    // DetourAttach((PVOID*)(&pFindTextureFormat_2B55C60), (PVOID)FindTextureFormat_2B55C60);
 
     
-   // DetourAttach((PVOID*)(&pLightVerts_2B52A80), (PVOID)LightVerts_2B52A80);
+    DetourAttach((PVOID*)(&pLightVerts_2B52A80), (PVOID)LightVerts_2B52A80);
    
     //DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
     /*
@@ -2811,11 +2811,48 @@ int CC gbh_AddLight(SLight* pLight)
     return idx * sizeof(SLightInternal);
 }
 
-int __stdcall LightVerts_2B52A80(int count, Vert *pVerts, int alwaysZero, unsigned __int8 colourRelated)
+int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, unsigned __int8 colourRelated)
 {
+    DWORD vertIdx = 0;
+
+    const auto kLightCount = (*numLights_2B93E38);
+    for (int i = 0; i < vertCount; i++)
+    {
+        for (int j = 0; j < kLightCount; j++)
+        {
+            if ((lights_2B959E0[j].field_0 & 0x30000) == 0x10000) // Light type ?
+            {
+                const auto diffB1 = BYTEn(pVerts[vertIdx + 1].diff, 0) - lights_2B959E0[j].field_14;
+                const auto diffB2 = BYTEn(pVerts[vertIdx + 1].diff, 1) - lights_2B959E0[j].field_18;
+                const auto diffB3 = BYTEn(pVerts[vertIdx + 1].diff, 2) - lights_2B959E0[j].field_1C;
+                const DWORD diffCalc = diffB1 * diffB1 + diffB2 * diffB2 + diffB3 * diffB3;
+                if (diffCalc <= lights_2B959E0[j].field_C)
+                {
+                    auto tblIdx = diffCalc & 0x7FFFFF;
+                    auto v15 = (diffCalc & 0x7F800000) >> 1;
+                    DWORD v16 = 0;
+                    if (v15 & 0x400000)
+                    {
+                        v16 = v15 + 0x20000000;
+                    }
+                    else
+                    {
+                        v16 = v15 + 0x1F800000;
+                        tblIdx |= 0x800000u;
+                    }
+
+                    // TODO: Uses light table
+                }
+            }
+        }
+
+        // TODO: Use calculated colour to set in pVerts[vertIdx].diff
+
+    }
+
     // TODO: Implement me
-    //    return pLightVerts_2B52A80(count, pVerts, alwaysZero, colourRelated);
-    return 0;
+    return pLightVerts_2B52A80(vertCount, pVerts, alwaysZero, colourRelated);
+    //return 0;
 }
 
 static void RebasePtrs(DWORD baseAddr)

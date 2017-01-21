@@ -17,7 +17,7 @@
 
 static bool gProxyOnly = true;      // Pass through all functions to real DLL
 static bool gDetours = false;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
-static bool gRealPtrs = false;
+static bool gRealPtrs = true;
 
 // Other
 static S3DFunctions gFuncs;
@@ -128,7 +128,7 @@ static DWORD dword_2B93E28 = 0;
 
 
 
-static DWORD numLights_2B93E38 = 0;
+
 static float gfAmbient_E10838 = 1.0f;
 
 struct SImageTableEntry
@@ -231,13 +231,6 @@ int __stdcall LightVerts_2B52A80(int count, Vert *pVerts, int alwaysZero, unsign
 decltype(&LightVerts_2B52A80) pLightVerts_2B52A80 = 0x0;
 
 
-int __stdcall LightVerts_2B52A80(int count, Vert *pVerts, int alwaysZero, unsigned __int8 colourRelated)
-{
-    // TODO: Implement me
-//    return pLightVerts_2B52A80(count, pVerts, alwaysZero, colourRelated);
-    return 0;
-}
-
 void CC ConvertColourBank(s32 unknown)
 {
     // Empty/NOP in real game
@@ -339,16 +332,6 @@ int* CC MakeScreenTable(int value, int elementSize, unsigned int size)
     return result;
 }
 
-int CC gbh_AddLight(SLight* pLight)
-{
-    pLight->field_0 = 0xfff1ff9f; // Last 2 bytes are like radius and/or flags?
-    pLight->field_10 = 0x0000ffff; // Seems to be the light colour
-    if (gProxyOnly)
-    {
-        return gFuncs.pgbh_AddLight(pLight);
-    }
-    return 0;
-}
 
 char CC gbh_AssignPalette(STexture* pTexture, int palId)
 {
@@ -2761,6 +2744,79 @@ static void InstallHooks()
 
 }
 
+struct SLightInternal
+{
+    DWORD field_0;
+    float field_4;
+    float field_8;
+    float field_C;
+    float field_10; // A byte of SLight field_10
+
+    // x from SLight?
+    float field_14;
+
+    // y from SLight?
+    float field_18; // Light verts takes pointer to here
+
+    // z from SLight?
+    float field_1C;
+
+    // SLight field_10 bytes
+    float field_20;
+    float field_24;
+    float field_28;
+};
+static_assert(sizeof(SLightInternal) == 0x2c, "Wrong size SLightInternal");
+
+//SLightInternal lights_2B959E0[256]; // 459E0
+SLightInternal* lights_2B959E0 = (SLightInternal*)0x459E0;
+static DWORD* numLights_2B93E38 = 0; // 43E38
+
+void CC gbh_ResetLights()
+{
+    if (gProxyOnly)
+    {
+        gFuncs.pgbh_ResetLights();
+    }
+    (*numLights_2B93E38) = 0;
+}
+
+int CC gbh_AddLight(SLight* pLight)
+{
+    //pLight->field_0 = 0xfff1ff9f; // Last 2 bytes are like radius and/or flags?
+    //pLight->field_10 = 0x0000ffff; // Seems to be the light colour
+    if (gProxyOnly)
+    {
+        //auto ret = gFuncs.pgbh_AddLight(pLight);
+        //return ret;
+    }
+
+    DWORD idx = (*numLights_2B93E38);
+
+    lights_2B959E0[idx].field_0 = pLight->field_0;
+    lights_2B959E0[idx].field_4 = (float)(pLight->field_0 & 0xFF) * 0.0039215689;
+    lights_2B959E0[idx].field_14 = pLight->field_4;
+    lights_2B959E0[idx].field_18 = pLight->field_8;
+    lights_2B959E0[idx].field_1C = pLight->field_C;
+
+    lights_2B959E0[idx].field_20 = (float)(((unsigned int)pLight->field_10 >> 16) & 0xFF) * 0.0039215689;
+    lights_2B959E0[idx].field_24 = (float)(((unsigned int)pLight->field_10 >> 8) & 0xFF) * 0.0039215689;
+    lights_2B959E0[idx].field_28 = (float)(pLight->field_10 & 0xFF) * 0.0039215689;
+
+    lights_2B959E0[idx].field_8 = ((pLight->field_0 >> 8) & 0xFF) * 0.0039215689 * 8.0;
+    lights_2B959E0[idx].field_C = lights_2B959E0[idx].field_8 * lights_2B959E0[idx].field_8;
+    lights_2B959E0[idx].field_10 = 1.0 / lights_2B959E0[idx].field_8;
+
+    (*numLights_2B93E38)++;
+    return idx * sizeof(SLightInternal);
+}
+
+int __stdcall LightVerts_2B52A80(int count, Vert *pVerts, int alwaysZero, unsigned __int8 colourRelated)
+{
+    // TODO: Implement me
+    //    return pLightVerts_2B52A80(count, pVerts, alwaysZero, colourRelated);
+    return 0;
+}
 
 static void RebasePtrs(DWORD baseAddr)
 {
@@ -2786,6 +2842,10 @@ static void RebasePtrs(DWORD baseAddr)
     // Vars
     //cache_12_array_dword_E13D80 = (decltype(cache_12_array_dword_E13D80))(baseAddr + 0x13D4C);
     gActiveTextureId_dword_2B63DF4 = (decltype(gActiveTextureId_dword_2B63DF4))(baseAddr + 0x13DF4);
+
+    lights_2B959E0 = (decltype(lights_2B959E0))(baseAddr + 0x459E0);
+    numLights_2B93E38 = (decltype(numLights_2B93E38))(baseAddr + 0x43E38);
+
     //real_texture_sizes_word_107E0 = (WORD*)(baseAddr + 0x107E0);
     //real_CacheSizes_word_10810 = (WORD*)(baseAddr + 0x10810);
     //real_CacheSizes_dword_43EB0 = (DWORD*)(baseAddr + 0x43EB0);
@@ -3132,15 +3192,6 @@ STexture* CC gbh_RegisterTexture(__int16 width, __int16 height, BYTE* pData, int
     return result;
 }
 
-void CC gbh_ResetLights()
-{
-    if (gProxyOnly)
-    {
-        gFuncs.pgbh_ResetLights();
-    }
-    numLights_2B93E38 = 0;
-}
-
 void CC gbh_SetAmbient(float ambient)
 {
     if (gProxyOnly)
@@ -3149,6 +3200,7 @@ void CC gbh_SetAmbient(float ambient)
     }
     gfAmbient_E10838 = ambient * 255.0f;
 }
+
 
 int CC gbh_SetCamera(float a1, float a2, float a3, float a4)
 {

@@ -67,27 +67,34 @@ static_assert(sizeof(SD3dStruct) == 0x64, "Wrong size SD3dStruct");
 
 // From dll
 static bool gbSurfaceIsFreed_E43E18 = false;
-static DWORD gCacheHitRates_dword_E43F10[12] = {};
-static DWORD gBatchFlushes_dword_2B93EA8 = 0;
-static DWORD mNumTextureSwaps_2B93EA4 = 0;
-static DWORD gNumPolysDrawn_dword_E43EA0 = 0;
 
 static struct SHardwareTexture* hack2 = nullptr;
 static struct SHardwareTexture** gActiveTextureId_dword_2B63DF4 = &hack2;
 static double qword_2B60848 = 0;
 static DWORD frame_number_2B93E4C = 0;
 
+// Texture cache related
+static WORD texture_sizes_word_107E0[12] = { 8, 16, 32, 64, 128, 256, 1032, 1040, 1056, 1088, 1152, 1280 };
+
 struct SGlobals
 {
-    DWORD mNumPolysDrawn;
-    DWORD mNumTextureSwaps;
+    DWORD mNumPolysDrawn; // gNumPolysDrawn_dword_E43EA0
+    DWORD mNumTextureSwaps; // gGlobals.mNumTextureSwaps
     DWORD mNumBatchFlushes;
-    DWORD mSceneTime_2B93EAC;
+    DWORD mSceneTime_2B93EAC; // gSceneTime_2B93EAC
 
-    // Both statically set during init, cache sizes ?
-    DWORD dword_2B93EB0[12];
-    DWORD dword_2B93EE0[12];
-    DWORD g0x30Size_dword_E43F10[12]; // Cache hit counters
+
+    DWORD gCacheSizes_dword_43EB0[12];
+    DWORD gCacheSizes_word_10810[12];
+
+    // TODO: This is displayed 1 column before where expected, some other 12 DWORD array
+    // must be read for that one ??
+    DWORD gCacheHitRates_dword_E43F10[12]; // Cache hit counters
+
+
+    // TODO: Not really part of this
+    DWORD gCacheUnknown_107F8[12] = { 10, 62, 62, 88, 1, 0, 110, 126, 126, 40, 10, 0 };
+    SCache* cache_12_array_dword_E13D80[12] = {};
 
 };
 static SGlobals gGlobals = {};
@@ -112,7 +119,6 @@ static float gWindow_bottom_dword_E43E14;
 static DWORD gWindow_d5_dword_E13DC4;
 
 static float k1_2B638A0;
-static float gSceneTime_2B93EAC; // SGlobals
 
 static DWORD gGpuSpecificHack_dword_2B63884 = 0;
 static DWORD gbIsAtiRagePro_dword_E13888 = 0;
@@ -155,12 +161,6 @@ static_assert(sizeof(SPalData) == 0xC, "Wrong size SPalData");
 
 static SPalData pals_2B63E00[16384];
 
-// Texture cache related
-struct SCache* cache_12_array_dword_E13D80[12] = {};
-static WORD texture_sizes_word_107E0[12] = { 8, 16, 32, 64, 128, 256, 1032, 1040, 1056, 1088, 1152, 1280 };
-static WORD gCacheUnknown_107F8[12] = { 10, 62, 62, 88, 1, 0, 110, 126, 126, 40, 10, 0 };
-static WORD gCacheSizes_word_10810[12];
-static DWORD gCacheSizes_dword_43EB0[12];
 
 struct SCache
 {
@@ -213,14 +213,14 @@ STexture* __stdcall TextureCache_E01EC0(STexture* pTexture)
             else
             {
                 // Otherwise this item is the root
-                cache_12_array_dword_E13D80[pCache->field_6_cache_idx] = pCache->field_20_pCache;
+                gGlobals.cache_12_array_dword_E13D80[pCache->field_6_cache_idx] = pCache->field_20_pCache;
             }
 
             // Set the first item to the root of the cache list ?
-            pCache->field_1C_pNext = cache_12_array_dword_E13D80[pCache->field_6_cache_idx];
+            pCache->field_1C_pNext = gGlobals.cache_12_array_dword_E13D80[pCache->field_6_cache_idx];
 
-            cache_12_array_dword_E13D80[pCache->field_6_cache_idx]->field_20_pCache = pCache;
-            cache_12_array_dword_E13D80[pCache->field_6_cache_idx] = pCache;
+            gGlobals.cache_12_array_dword_E13D80[pCache->field_6_cache_idx]->field_20_pCache = pCache;
+            gGlobals.cache_12_array_dword_E13D80[pCache->field_6_cache_idx] = pCache;
             pCache->field_20_pCache = 0;
         }
     }
@@ -384,10 +384,10 @@ int gbh_BeginScene()
     {
         gbSurfaceIsFreed_E43E18 = false;
     }
-    memset(gCacheHitRates_dword_E43F10, 0, sizeof(gCacheHitRates_dword_E43F10));
-    gBatchFlushes_dword_2B93EA8 = 0;
-    mNumTextureSwaps_2B93EA4 = 0;
-    gNumPolysDrawn_dword_E43EA0 = 0;
+    memset(gGlobals.gCacheHitRates_dword_E43F10, 0, sizeof(gGlobals.gCacheHitRates_dword_E43F10));
+    gGlobals.mNumBatchFlushes = 0;
+    gGlobals.mNumTextureSwaps = 0;
+    gGlobals.mNumPolysDrawn = 0;
     (*gActiveTextureId_dword_2B63DF4) = (SHardwareTexture*)-1;
     qword_2B60848 = 0i64;
     ++frame_number_2B93E4C;
@@ -480,7 +480,7 @@ static void CleanUpD3d()
 {
     for (int idx = 0; idx < 12; idx++)
     {
-        auto pCache = cache_12_array_dword_E13D80[idx];
+        auto pCache = gGlobals.cache_12_array_dword_E13D80[idx];
         if (pCache)
         {
             SCache* pCurrentCache = nullptr;
@@ -496,13 +496,13 @@ static void CleanUpD3d()
                 if (nextPtr)
                 {
                     nextPtr->field_20_pCache = 0;
-                    cache_12_array_dword_E13D80[idx] = pCache->field_1C_pNext;
+                    gGlobals.cache_12_array_dword_E13D80[idx] = pCache->field_1C_pNext;
                 }
                 free(pCache);
                 pCache = pCurrentCache;
             } while (pCurrentCache);
         }
-        cache_12_array_dword_E13D80[idx] = 0;
+        gGlobals.cache_12_array_dword_E13D80[idx] = 0;
     }
 
     if (*gD3dPtr_dword_21C85E0)
@@ -600,10 +600,10 @@ static bool Clipped(Vert* pVerts, int count)
         minY = std::min(minY, pVerts[i].y);
     }
 
-    return (maxX >= gWindow_left_dword_E43E08      // Right most side is before the left side of the window?
-        && minX >= gWindow_right_dword_E43E0C      // Left most side is after the right side of the window?
-        && minY >= gWindow_top_dword_E43E10     // Bottom is before 
-        && maxY >= gWindow_bottom_dword_E43E14);
+    return (maxX < gWindow_left_dword_E43E08
+        && minX >= gWindow_right_dword_E43E0C
+        && minY < gWindow_bottom_dword_E43E14
+        && maxY >= gWindow_top_dword_E43E10);
 }
 
 static void  __stdcall SetRenderStates_E02960(int states);
@@ -694,10 +694,10 @@ static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pText
     }
 
 
-    auto pCache = cache_12_array_dword_E13D80[cache_index];
+    auto pCache = gGlobals.cache_12_array_dword_E13D80[cache_index];
     if (pCache->field_8_used_Frame_num == frame_number_2B93E4C)
     {
-        ++gBatchFlushes_dword_2B93EA8;
+        ++gGlobals.mNumBatchFlushes;
         (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->SetRenderState(D3DRENDERSTATE_FLUSHBATCH, 1);
         ++frame_number_2B93E4C;
     }
@@ -734,7 +734,7 @@ static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pText
 
     auto result = pCache->field_6_cache_idx;
 
-    ++gCacheHitRates_dword_E43F10[result];
+    ++gGlobals.gCacheHitRates_dword_E43F10[result];
 
    return 0;
 
@@ -829,7 +829,7 @@ void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int dif
     {
         D3dTextureSetCurrent_2B56110(pTextureCache->field_24_texture_id);
         (*gActiveTextureId_dword_2B63DF4) = pHardwareTexture;
-        ++mNumTextureSwaps_2B93EA4;
+        ++gGlobals.mNumTextureSwaps;
         const auto v15 = pTextureCache->field_1C_pNext;
         pTextureCache->field_8_used_Frame_num = frame_number_2B93E4C;
         if (v15)
@@ -842,15 +842,15 @@ void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int dif
             }
             else
             {
-                cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = v15;
+                gGlobals.cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = v15;
             }
 
             pTextureCache->field_1C_pNext->field_20_pCache = pTextureCache->field_20_pCache;
             const auto cacheIdx = pTextureCache->field_6_cache_idx;
             pTextureCache->field_1C_pNext = 0;
-            pTextureCache->field_20_pCache = cache_12_array_dword_E13D80[cacheIdx];
-            cache_12_array_dword_E13D80[cacheIdx]->field_1C_pNext = pTextureCache;
-            cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = pTextureCache;
+            pTextureCache->field_20_pCache = gGlobals.cache_12_array_dword_E13D80[cacheIdx];
+            gGlobals.cache_12_array_dword_E13D80[cacheIdx]->field_1C_pNext = pTextureCache;
+            gGlobals.cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = pTextureCache;
         }
     }
 
@@ -890,7 +890,7 @@ void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int dif
     if (SUCCEEDED((*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->DrawPrimitive(
         D3DPT_TRIANGLELIST, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 3, D3DDP_DONOTUPDATEEXTENTS)))
     {
-        gNumPolysDrawn_dword_E43EA0++;
+        gGlobals.mNumPolysDrawn++;
     }
 
     return;
@@ -951,8 +951,10 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
 
     pTexture->field_13_flags &= 0xBF;
     pTexture->field_13_flags |= 0x40;
+
     if (pTexture->field_1C_ptr)
     {
+        
         if (pTexture->field_13_flags & 0x80)
         {
             if (pTexture->field_13_flags & 0x40 && quadFlags & 0x300)
@@ -995,7 +997,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
     {
         D3dTextureSetCurrent_2B56110(pTextureCache->field_24_texture_id);
         (*gActiveTextureId_dword_2B63DF4) = pHardwareTexture;
-        ++mNumTextureSwaps_2B93EA4;
+        ++gGlobals.mNumTextureSwaps;
         const auto v15 = pTextureCache->field_1C_pNext;
         pTextureCache->field_8_used_Frame_num = frame_number_2B93E4C;
         if (v15)
@@ -1008,15 +1010,15 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
             }
             else
             {
-                cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = v15;
+                gGlobals.cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = v15;
             }
 
             pTextureCache->field_1C_pNext->field_20_pCache = pTextureCache->field_20_pCache;
             const auto cacheIdx = pTextureCache->field_6_cache_idx;
             pTextureCache->field_1C_pNext = 0;
-            pTextureCache->field_20_pCache = cache_12_array_dword_E13D80[cacheIdx];
-            cache_12_array_dword_E13D80[cacheIdx]->field_1C_pNext = pTextureCache;
-            cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = pTextureCache;
+            pTextureCache->field_20_pCache = gGlobals.cache_12_array_dword_E13D80[cacheIdx];
+            gGlobals.cache_12_array_dword_E13D80[cacheIdx]->field_1C_pNext = pTextureCache;
+            gGlobals.cache_12_array_dword_E13D80[pTextureCache->field_6_cache_idx] = pTextureCache;
         }
     }
 
@@ -1123,7 +1125,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
     }
 
     (*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1, pVerts, 4, D3DDP_DONOTUPDATEEXTENTS);
-    gNumPolysDrawn_dword_E43EA0 += 2;
+    gGlobals.mNumPolysDrawn += 2;
 }
 
 void CC gbh_DrawQuadClipped(int a1, int a2, int a3, int a4, int a5)
@@ -1278,7 +1280,7 @@ double CC gbh_EndScene()
         (*gpVideoDriver_E13DC8->field_84_from_initDLL->pVid_GetSurface)(gpVideoDriver_E13DC8);
     }
     double result = qword_2B60848 / k1_2B638A0;
-    gSceneTime_2B93EAC = qword_2B60848 / k1_2B638A0;// always 0 / 1 ?
+    gGlobals.mSceneTime_2B93EAC = qword_2B60848 / k1_2B638A0;// always 0 / 1 ?
     return result;
 }
 
@@ -1350,7 +1352,7 @@ int CC gbh_GetUsedCache(int cacheIdx)
     }
 
     int usedCacheCount = 0;
-    SCache* pCache = cache_12_array_dword_E13D80[cacheIdx];
+    SCache* pCache = gGlobals.cache_12_array_dword_E13D80[cacheIdx];
     while (pCache)
     {
         if (pCache->field_8_used_Frame_num == frame_number_2B93E4C)
@@ -2373,9 +2375,9 @@ static int Init2_2B51F40()
         {
             flags = 0;
         }
-        cache_12_array_dword_E13D80[i] = 0;
+        gGlobals.cache_12_array_dword_E13D80[i] = 0;
 
-        for (int j = 0; j < gCacheSizes_word_10810[i]; j++)
+        for (int j = 0; j < gGlobals.gCacheSizes_word_10810[i]; j++)
         {
             SCache* pCache = (SCache *)malloc(sizeof(SCache));
             memset(pCache, 0, sizeof(SCache));
@@ -2407,15 +2409,15 @@ static int Init2_2B51F40()
             pCache->field_20_pCache = 0;
             pCache->field_1C_pNext = 0;
 
-            if (cache_12_array_dword_E13D80[i])
+            if (gGlobals.cache_12_array_dword_E13D80[i])
             {
-                pCache->field_20_pCache = cache_12_array_dword_E13D80[i];
-                cache_12_array_dword_E13D80[i]->field_1C_pNext = pCache;
-                cache_12_array_dword_E13D80[i] = pCache;
+                pCache->field_20_pCache = gGlobals.cache_12_array_dword_E13D80[i];
+                gGlobals.cache_12_array_dword_E13D80[i]->field_1C_pNext = pCache;
+                gGlobals.cache_12_array_dword_E13D80[i] = pCache;
             }
             else
             {
-                cache_12_array_dword_E13D80[i] = pCache;
+                gGlobals.cache_12_array_dword_E13D80[i] = pCache;
             }
         }
     }
@@ -2533,15 +2535,15 @@ static signed int Init_E02340()
 
         for (int i = 0; i < 12; i++)
         {
-            gCacheSizes_word_10810[i] = gCacheUnknown_107F8[i] * cacheSize;
-            gCacheSizes_dword_43EB0[i] = gCacheUnknown_107F8[i] * cacheSize;
+            gGlobals.gCacheSizes_word_10810[i] = gGlobals.gCacheUnknown_107F8[i] * cacheSize;
+            gGlobals.gCacheSizes_dword_43EB0[i] = gGlobals.gCacheUnknown_107F8[i] * cacheSize;
         }
         
         Init2_2B51F40();
   
         for (int i = 0; i < 12; i++)
         {
-            if (gCacheUnknown_107F8[i] && !gCacheSizes_dword_43EB0[i])
+            if (gGlobals.gCacheUnknown_107F8[i] && !gGlobals.gCacheSizes_dword_43EB0[i])
             {
                 return 1;
             }
@@ -2817,8 +2819,6 @@ int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, un
 {
     return 0;
 
-    DWORD vertIdx = 0;
-
     const auto kLightCount = (*numLights_2B93E38);
     for (int i = 0; i < vertCount; i++)
     {
@@ -2826,9 +2826,9 @@ int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, un
         {
             if ((lights_2B959E0[j].field_0 & 0x30000) == 0x10000) // Light type ?
             {
-                const auto diffB1 = BYTEn(pVerts[vertIdx + 1].diff, 0) - lights_2B959E0[j].field_14;
-                const auto diffB2 = BYTEn(pVerts[vertIdx + 1].diff, 1) - lights_2B959E0[j].field_18;
-                const auto diffB3 = BYTEn(pVerts[vertIdx + 1].diff, 2) - lights_2B959E0[j].field_1C;
+                const auto diffB1 = BYTEn(pVerts[i + 1].diff, 0) - lights_2B959E0[j].field_14;
+                const auto diffB2 = BYTEn(pVerts[i + 1].diff, 1) - lights_2B959E0[j].field_18;
+                const auto diffB3 = BYTEn(pVerts[i + 1].diff, 2) - lights_2B959E0[j].field_1C;
                 const DWORD diffCalc = diffB1 * diffB1 + diffB2 * diffB2 + diffB3 * diffB3;
                 if (diffCalc <= lights_2B959E0[j].field_C)
                 {
@@ -2881,7 +2881,7 @@ static void RebasePtrs(DWORD baseAddr)
     */
 
     // Vars
-    //cache_12_array_dword_E13D80 = (decltype(cache_12_array_dword_E13D80))(baseAddr + 0x13D4C);
+    //gGlobals.cache_12_array_dword_E13D80 = (decltype(gGlobals.cache_12_array_dword_E13D80))(baseAddr + 0x13D4C);
     gActiveTextureId_dword_2B63DF4 = (decltype(gActiveTextureId_dword_2B63DF4))(baseAddr + 0x13DF4);
 
     lights_2B959E0 = (decltype(lights_2B959E0))(baseAddr + 0x459E0);
@@ -3295,5 +3295,3 @@ STexture* CC gbh_UnlockTexture(STexture* pTexture)
     pTexture->field_13_flags &= 0xFEu;
     return pTexture;
 }
-
-

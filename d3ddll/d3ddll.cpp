@@ -574,7 +574,7 @@ int CC gbh_DrawFlatRect(int a1, int a2)
 #undef max
 #undef min
 
-static bool NotClipped(Vert* pVerts, int count)
+static bool Clipped(Vert* pVerts, int count)
 {
     float maxX = pVerts[0].x;
     for (auto i = 1; i < count; i++)
@@ -600,10 +600,10 @@ static bool NotClipped(Vert* pVerts, int count)
         minY = std::min(minY, pVerts[i].y);
     }
 
-    return (maxX <= gWindow_right_dword_E43E0C
-        && minX >= gWindow_left_dword_E43E08
-        && maxY <= gWindow_bottom_dword_E43E14
-        && minY >= gWindow_top_dword_E43E10);
+    return (maxX >= gWindow_left_dword_E43E08      // Right most side is before the left side of the window?
+        && minX >= gWindow_right_dword_E43E0C      // Left most side is after the right side of the window?
+        && minY >= gWindow_top_dword_E43E10     // Bottom is before 
+        && maxY >= gWindow_bottom_dword_E43E14);
 }
 
 static void  __stdcall SetRenderStates_E02960(int states);
@@ -749,9 +749,14 @@ void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int dif
         return gFuncs.pgbh_DrawTriangle(triFlags, pTexture, pVerts, diffuseColour);
     }
 
-    if (pVerts[0].z <= 0.0f || !NotClipped(pVerts, 3))
+    if (pVerts[0].z <= 0.0f)
     {
-        // return;
+        return;
+    }
+
+    if (Clipped(pVerts, 3))
+    {
+        return;
     }
 
     SetRenderStates_E02960(triFlags);
@@ -912,12 +917,11 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
         return;
     }
 
-    /*
-    if (NotClipped(pVerts, 4)) // TODO: Fix clipping check
+    
+    if (Clipped(pVerts, 4))
     {
         return;
     }
-    */
 
     if (quadFlags & 0x10000) // whatever this flag is turns point filtering on
     {

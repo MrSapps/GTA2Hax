@@ -17,7 +17,7 @@ struct SVideo
     DWORD field_1C_num_display_modes;
     DWORD field_20_num_enums;
     struct SDisplayMode* field_24_head_ptr;
-    struct SDisplayMode** field_28_display_mode_array;
+    struct SDisplayMode* field_28_display_mode_array;
     struct SDevice* field_2C_device_info_head_ptr;
     struct SDevice* field_30_device_info_last;
     DWORD field_34_active_device_id;

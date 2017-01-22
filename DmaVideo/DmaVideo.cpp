@@ -9,7 +9,7 @@
 #define BYTE1(x)   BYTEn(x,  1)
 
 static HINSTANCE gHinstance;
-static SPtrVideoFunctions* dword_100FFF8; // TODO: Reverse me
+static SPtrVideoFunctions* gVideoFuncs_100FFF8;
 
 static SVideoFunctions gRealFuncs;
 
@@ -164,14 +164,15 @@ HRESULT WINAPI EnumDisplayModesCallBack_1001340(
 
     if (pVideoDriver->field_28_display_mode_array)
     {
-        pVideoDriver->field_28_display_mode_array[14] = pDisplayMode;
+        pVideoDriver->field_28_display_mode_array->field_38_pnext = pDisplayMode;
     }
     else
     {
         pVideoDriver->field_24_head_ptr = pDisplayMode;
     }
 
-    pVideoDriver->field_28_display_mode_array = (SDisplayMode **)pDisplayMode; // TODO: Probably wrong
+    pVideoDriver->field_28_display_mode_array = pDisplayMode;
+
     pDisplayMode->field_0_display_mode_idx = pVideoDriver->field_14_display_mode_count_2_q;
     ++pVideoDriver->field_14_display_mode_count_2_q;
     pDisplayMode->field_3C = 1;
@@ -212,7 +213,7 @@ SVideo* CC Vid_Init_SYS(s32 param1, u16 param2_flags)
         SVideo* pVideoDriver = new SVideo();
         memset(pVideoDriver, 0, sizeof(SVideo));
         pVideoDriver->field_7C_self_dll_handle = gHinstance;
-        pVideoDriver->field_84_from_initDLL = dword_100FFF8;
+        pVideoDriver->field_84_from_initDLL = gVideoFuncs_100FFF8;
         pVideoDriver->field_0 = 1;
         pVideoDriver->field_78 = param1;
         pVideoDriver->field_14_display_mode_count_2_q = 1;
@@ -1305,6 +1306,7 @@ s32 CC Vid_ClearScreen(SVideo* pVideoDriver, u8 aR, u8 aG, u8 aB, s32 aLeft, s32
 
     DDBLTFX bltFx = {};
     bltFx.dwSize = 0x64;
+    bltFx.dwFillColor = 0;
 
     /*
     bltFx.dwFillColor =
@@ -1341,11 +1343,56 @@ s32 CC Vid_ClearScreen(SVideo* pVideoDriver, u8 aR, u8 aG, u8 aB, s32 aLeft, s32
     return result;
 }
 
-s32 CC Vid_SetGamma(SVideo* pVideoDriver, f32 a2, f32 a3, f32 a4)
+static void ApplyGamma(WORD* gammaArray, float gamma)
+{
+    float rAcc = 0.0f;
+    float rNormalized = 1.0f / gamma;
+    for (int i=0; i<256; i++)
+    {
+        *gammaArray = static_cast<WORD>(pow(rAcc, rNormalized) * 65535.0f);
+        ++gammaArray;
+        rAcc = rAcc - -0.0039215689f;
+    }
+}
+
+s32 CC Vid_SetGamma(SVideo* pVideoDriver, f32 gR, f32 gG, f32 gB)
 {
     TRACE_ENTRYEXIT;
 
-    // TODO
+    auto pPrimarySurface = pVideoDriver->field_134_SurfacePrimary;
+    if (!pPrimarySurface)
+    {
+        return 1;
+    }
+
+    IDirectDrawGammaControl* pIDirectDrawGammaControl = nullptr;
+    pVideoDriver->field_88_last_error = pPrimarySurface->QueryInterface(IID_IDirectDrawGammaControl, (LPVOID*)&pIDirectDrawGammaControl);
+
+    if (gCoopResult_dword_100FFE4) // Original bug, should be checking pVideoDriver->field_88_last_error  ?
+    {
+        return 1;
+    }
+
+    DDGAMMARAMP gammaRamp = {};
+    pVideoDriver->field_88_last_error = pIDirectDrawGammaControl->GetGammaRamp(0, &gammaRamp);
+
+    if (gCoopResult_dword_100FFE4) // TODO: Ditto?
+    {
+        return 1;
+    }
+
+    ApplyGamma(gammaRamp.red, gR);
+    ApplyGamma(gammaRamp.green, gG);
+    ApplyGamma(gammaRamp.blue, gB);
+
+    pVideoDriver->field_88_last_error = pIDirectDrawGammaControl->SetGammaRamp(0, &gammaRamp);
+    if (gCoopResult_dword_100FFE4)
+    {
+        return 1;
+    }
+
+    pIDirectDrawGammaControl->Release();
+
     return 0;
 }
 
@@ -1360,20 +1407,19 @@ s32 CC Vid_InitDLL(HINSTANCE hInstance, SPtrVideoFunctions* a2)
 {
     TRACE_ENTRYEXIT;
 
-    HMODULE hReal = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_Dmavideo.dll");
+    //HMODULE hReal = LoadLibrary(L"C:\\Program Files (x86)\\Rockstar Games\\GTA2\\_Dmavideo.dll");
 
-    DWORD addr = (DWORD)hReal + 0x1010;
-    pInit_DisplayMode_1001010 = (decltype(&Init_DisplayMode_1001010))addr;
+   // DWORD addr = (DWORD)hReal + 0x1010;
+    //pInit_DisplayMode_1001010 = (decltype(&Init_DisplayMode_1001010))addr;
 
 
-    PopulateSVideoFunctions(hReal, gRealFuncs);
+    //PopulateSVideoFunctions(hReal, gRealFuncs);
 
     gHinstance = hInstance;
-    dword_100FFF8 = a2;
+    gVideoFuncs_100FFF8 = a2;
 
-    //return 0;
-
-    return gRealFuncs.pVid_InitDLL(hInstance, a2);
+    return 0;
+    //return gRealFuncs.pVid_InitDLL(hInstance, a2);
 }
 
 static SVidVersion gVersionInfo =

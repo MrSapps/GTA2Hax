@@ -15,7 +15,7 @@
 
 #pragma comment(lib, "dxguid.lib")
 
-static bool gProxyOnly = false;      // Pass through all functions to real DLL
+static bool gProxyOnly = true;      // Pass through all functions to real DLL
 static bool gDetours = true;       // Used in combination with gProxyOnly=true to hook some internal functions to test them in isolation
 static bool gRealPtrs = true;
 
@@ -2750,25 +2750,25 @@ static void InstallHooks()
 
 struct SLightInternal
 {
-    DWORD field_0;
-    float field_4;
-    float field_8;
-    float field_C;
-    float field_10; // A byte of SLight field_10
+    DWORD field_0_flags;
+    float field_4_brightness;
+    float field_8_colour1;
+    float field_C_radius;
+    float field_10_colour2; // A byte of SLight field_10
 
     // x from SLight?
-    float field_14;
+    float field_14_x;
 
     // y from SLight?
-    float field_18; // Light verts takes pointer to here
+    float field_18_y; // Light verts takes pointer to here
 
     // z from SLight?
-    float field_1C;
+    float field_1C_z;
 
     // SLight field_10 bytes
-    float field_20;
-    float field_24;
-    float field_28;
+    float field_20_r;
+    float field_24_g;
+    float field_28_b;
 };
 static_assert(sizeof(SLightInternal) == 0x2c, "Wrong size SLightInternal");
 
@@ -2797,40 +2797,49 @@ int CC gbh_AddLight(SLight* pLight)
 
     DWORD idx = (*numLights_2B93E38);
 
-    lights_2B959E0[idx].field_0 = pLight->field_0;
-    lights_2B959E0[idx].field_4 = (float)(pLight->field_0 & 0xFF) * 0.0039215689;
-    lights_2B959E0[idx].field_14 = pLight->field_4;
-    lights_2B959E0[idx].field_18 = pLight->field_8;
-    lights_2B959E0[idx].field_1C = pLight->field_C;
+    lights_2B959E0[idx].field_0_flags = pLight->field_0;
+    lights_2B959E0[idx].field_4_brightness = (float)(pLight->field_0 & 0xFF) * 0.0039215689;
+    lights_2B959E0[idx].field_14_x = pLight->field_4;
+    lights_2B959E0[idx].field_18_y = pLight->field_8;
+    lights_2B959E0[idx].field_1C_z = pLight->field_C;
 
-    lights_2B959E0[idx].field_20 = (float)(((unsigned int)pLight->field_10 >> 16) & 0xFF) * 0.0039215689;
-    lights_2B959E0[idx].field_24 = (float)(((unsigned int)pLight->field_10 >> 8) & 0xFF) * 0.0039215689;
-    lights_2B959E0[idx].field_28 = (float)(pLight->field_10 & 0xFF) * 0.0039215689;
+    lights_2B959E0[idx].field_20_r = (float)(((unsigned int)pLight->field_10 >> 16) & 0xFF) * 0.0039215689;
+    lights_2B959E0[idx].field_24_g = (float)(((unsigned int)pLight->field_10 >> 8) & 0xFF) * 0.0039215689;
+    lights_2B959E0[idx].field_28_b = (float)(pLight->field_10 & 0xFF) * 0.0039215689;
 
-    lights_2B959E0[idx].field_8 = ((pLight->field_0 >> 8) & 0xFF) * 0.0039215689 * 8.0;
-    lights_2B959E0[idx].field_C = lights_2B959E0[idx].field_8 * lights_2B959E0[idx].field_8;
-    lights_2B959E0[idx].field_10 = 1.0 / lights_2B959E0[idx].field_8;
+    lights_2B959E0[idx].field_8_colour1 = ((pLight->field_0 >> 8) & 0xFF) * 0.0039215689 * 8.0;
+    lights_2B959E0[idx].field_C_radius = lights_2B959E0[idx].field_8_colour1 * lights_2B959E0[idx].field_8_colour1;
+    lights_2B959E0[idx].field_10_colour2 = 1.0 / lights_2B959E0[idx].field_8_colour1;
 
     (*numLights_2B93E38)++;
     return idx * sizeof(SLightInternal);
 }
 
+float* gPtr_dword_E13864 = 0x0;
+DWORD* dword_13868 = 0x0;
+
 int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, unsigned __int8 colourRelated)
 {
-    return 0;
-
+    float light_r = 0.0f;
+    float light_g = 0.0f;
+    float light_b = 0.0f;
     const auto kLightCount = (*numLights_2B93E38);
     for (int i = 0; i < vertCount; i++)
     {
+
         for (int j = 0; j < kLightCount; j++)
         {
-            if ((lights_2B959E0[j].field_0 & 0x30000) == 0x10000) // Light type ?
+            if ((lights_2B959E0[j].field_0_flags & 0x30000) == 0x10000) // Light type ?
             {
-                const auto diffB1 = BYTEn(pVerts[i + 1].diff, 0) - lights_2B959E0[j].field_14;
-                const auto diffB2 = BYTEn(pVerts[i + 1].diff, 1) - lights_2B959E0[j].field_18;
-                const auto diffB3 = BYTEn(pVerts[i + 1].diff, 2) - lights_2B959E0[j].field_1C;
+                
+                const auto diffB1 = BYTEn(pVerts[i + 1].diff, 0) - lights_2B959E0[j].field_14_x;
+                const auto diffB2 = BYTEn(pVerts[i + 1].diff, 1) - lights_2B959E0[j].field_18_y;
+                const auto diffB3 = BYTEn(pVerts[i + 1].diff, 2) - lights_2B959E0[j].field_1C_z;
+                
+
                 const DWORD diffCalc = diffB1 * diffB1 + diffB2 * diffB2 + diffB3 * diffB3;
-                if (diffCalc <= lights_2B959E0[j].field_C)
+
+                if (diffCalc <= lights_2B959E0[j].field_C_radius)
                 {
                     auto tblIdx = diffCalc & 0x7FFFFF;
                     auto v15 = (diffCalc & 0x7F800000) >> 1;
@@ -2845,17 +2854,51 @@ int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, un
                         tblIdx |= 0x800000u;
                     }
 
-                    // TODO: Uses light table
+                    const auto v17 = lights_2B959E0[j].field_8_colour1 
+                        - (float)(v16 & 0x7F800000 | (unsigned int)gPtr_dword_E13864[tblIdx >> (*dword_13868)]) 
+                        * lights_2B959E0[j].field_10_colour2;
+
+                    if (v17 > 0.0f)
+                    {
+                        auto lightWithBrightness = v17 * lights_2B959E0[j].field_4_brightness;
+                        light_r = light_r + lights_2B959E0[j].field_20_r * lightWithBrightness;
+                        light_g = light_g + lights_2B959E0[j].field_24_g * lightWithBrightness;
+                        light_b = light_b + lights_2B959E0[j].field_28_b * lightWithBrightness;
+                    }
                 }
             }
         }
 
-        // TODO: Use calculated colour to set in pVerts[vertIdx].diff
+        const float colourConverted = (float)colourRelated * 0.0039215689f;
 
+        const auto diffB2 = (double)(((unsigned int)pVerts[i].diff >> 16) & 0xFF);
+        auto b1 = colourConverted * diffB2 * light_r + gfAmbient_E10838;
+        if (b1 > 255.0f)
+        {
+            b1 = 255.0f;
+        }
+
+        const auto diffB1 = (double)((unsigned __int16)pVerts[i].diff >> 8);
+        auto b2 = colourConverted * diffB1 * light_g + gfAmbient_E10838;
+        if (b2 > 255.0f)
+        {
+            b2 = 255.0f;
+        }
+
+        auto diffB0 = (double)(unsigned __int8)pVerts[i].diff;
+        auto b3 = colourConverted * diffB0 * light_b + gfAmbient_E10838;
+        if (b3 > 255.0f)
+        {
+            b3 = 255.0f;
+        }
+   
+        pVerts[i].diff =  (signed int)b3 | pVerts[i].diff & 0xFF000000 | (((signed int)b2 | ((signed int)b1 << 8)) << 8);
     }
+    
 
     // TODO: Implement me
-    return pLightVerts_2B52A80(vertCount, pVerts, alwaysZero, colourRelated);
+    const auto ret = pLightVerts_2B52A80(vertCount, pVerts, alwaysZero, colourRelated);
+    return ret;
     //return 0;
 }
 
@@ -2886,6 +2929,8 @@ static void RebasePtrs(DWORD baseAddr)
 
     lights_2B959E0 = (decltype(lights_2B959E0))(baseAddr + 0x459E0);
     numLights_2B93E38 = (decltype(numLights_2B93E38))(baseAddr + 0x43E38);
+    gPtr_dword_E13864 = (decltype(gPtr_dword_E13864))(baseAddr + 0x13864);
+    dword_13868 = (decltype(dword_13868))(baseAddr + 0x13868);
 
     //real_texture_sizes_word_107E0 = (WORD*)(baseAddr + 0x107E0);
     //real_CacheSizes_word_10810 = (WORD*)(baseAddr + 0x10810);

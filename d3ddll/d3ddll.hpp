@@ -47,10 +47,10 @@ struct Verts
 struct SLight
 {
     DWORD field_0;  // ?? looking at map format maybe on/off time and strength/radius?
-    float field_4;  // x ?
-    float field_8;  // y ?
-    float field_C;  // z ?
-    DWORD field_10; // ARGB?
+    float field_4_x;  // x ?
+    float field_8_y;  // y ?
+    float field_C_z;  // z ?
+    DWORD field_10_colour; // ARGB?
 };
 static_assert(sizeof(SLight) == 0x14, "Wrong size SLight");
 

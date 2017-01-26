@@ -2798,7 +2798,7 @@ int CC gbh_AddLight(SLight* pLight)
     DWORD idx = (*numLights_2B93E38);
 
     lights_2B959E0[idx].field_0_flags = pLight->field_0;
-    lights_2B959E0[idx].field_4_brightness = (float)(pLight->field_0 & 0xFF) * 0.0039215689;
+    lights_2B959E0[idx].field_4_brightness = (float)((pLight->field_0 & 0xFF)) * 0.0039215689;
     lights_2B959E0[idx].field_14_x = pLight->field_4_x;
     lights_2B959E0[idx].field_18_y = pLight->field_8_y;
     lights_2B959E0[idx].field_1C_z = pLight->field_C_z;
@@ -2820,29 +2820,46 @@ int CC gbh_AddLight(SLight* pLight)
 float* gPtr_dword_E13864 = 0x0;
 DWORD* dword_13868 = 0x0;
 
+union FloatBits
+{
+    float value;
+    unsigned int bits;
+};
+
 int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, unsigned __int8 colourRelated)
 {
-    
-  
+    //lights_2B959E0[0] = lights_2B959E0[15];
+    //*numLights_2B93E38 = 1;
+
     const auto kLightCount = (*numLights_2B93E38);
-    for (int i = vertCount; i>=0; i--)
+//    for (int i = vertCount; i>=0; i--)
+    for (int i = 0; i<vertCount; i++)
     {
+
         float light_r = 0.0f;
         float light_g = 0.0f;
         float light_b = 0.0f;
+
         for (int j = 0; j < kLightCount; j++)
         {
-            if ((lights_2B959E0[j].field_0_flags & 0x30000) == 0x10000) // Light type ?
+            const SLightInternal& rLight = lights_2B959E0[j];
+
+            if ((rLight.field_0_flags & 0x30000) == 0x10000) // Light type ?
             {
                 // Check if vertex point is within light radius
-                const float dx = pVerts[i].x - lights_2B959E0[j].field_14_x;
-                const float dy = pVerts[i].y - lights_2B959E0[j].field_18_y;
-                const float dz = pVerts[i].z - lights_2B959E0[j].field_1C_z;
+                const float dx = pVerts[i + 1].x - lights_2B959E0[j].field_14_x;
+                const float dy = pVerts[i + 1].y - lights_2B959E0[j].field_18_y;
+                const float dz = pVerts[i + 1].z - lights_2B959E0[j].field_1C_z;
 
                 const float distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
 
-                if (distanceSquared <= lights_2B959E0[j].field_C_radius_squared)
+                if (distanceSquared <= rLight.field_C_radius_squared)
                 {
+                    /*
+                    FloatBits t;
+                    t.value = distanceSquared;
+                    t.bits &= 0x7FFFFF;
+
                     auto tblIdx = (unsigned int)distanceSquared & 0x7FFFFF;
                     auto v15 = ((unsigned int)distanceSquared & 0x7F800000) >> 1;
                     DWORD v16 = 0;
@@ -2859,13 +2876,16 @@ int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, un
                     const auto v17 = lights_2B959E0[j].field_8_radius 
                         - (float)(v16 & 0x7F800000 | (unsigned int)gPtr_dword_E13864[tblIdx >> (*dword_13868)]) 
                         * lights_2B959E0[j].field_10_radius_normalized;
+*/
+
+                    float v17 = lights_2B959E0[j].field_8_radius  - sqrt(distanceSquared) * lights_2B959E0[j].field_10_radius_normalized;// sqrt(distanceSquared) / 1.0f;
 
                     if (v17 > 0.0f)
                     {
-                        auto lightWithBrightness = v17 * lights_2B959E0[j].field_4_brightness;
-                        light_r = light_r + lights_2B959E0[j].field_20_r * lightWithBrightness;
-                        light_g = light_g + lights_2B959E0[j].field_24_g * lightWithBrightness;
-                        light_b = light_b + lights_2B959E0[j].field_28_b * lightWithBrightness;
+                        auto lightWithBrightness = v17 * rLight.field_4_brightness;
+                        light_r += rLight.field_20_r * lightWithBrightness;
+                        light_g += rLight.field_24_g * lightWithBrightness;
+                        light_b += rLight.field_28_b * lightWithBrightness;
                     }
                 }
             }
@@ -2873,31 +2893,32 @@ int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, un
 
         const float colourConverted = (float)colourRelated * 0.0039215689f;
 
-        const auto diffB2 = (double)(((unsigned int)pVerts[i].diff >> 16) & 0xFF);
-        auto b1 = colourConverted * diffB2 * light_r + gfAmbient_E10838;
-        if (b1 > 255.0f)
+        const auto diffRed = (double)(((unsigned int)pVerts[i].diff >> 16) & 0xFF);
+        auto rByte = colourConverted * diffRed * light_r + gfAmbient_E10838;
+        if (rByte > 255.0f)
         {
-            b1 = 255.0f;
+            rByte = 255.0f;
         }
 
-        const auto diffB1 = (double)((unsigned __int16)pVerts[i].diff >> 8);
-        auto b2 = colourConverted * diffB1 * light_g + gfAmbient_E10838;
-        if (b2 > 255.0f)
+        const auto diffGreen = (double)((unsigned __int16)pVerts[i].diff >> 8);
+        auto gByte = colourConverted * diffGreen * light_g + gfAmbient_E10838;
+        if (gByte > 255.0f)
         {
-            b2 = 255.0f;
+            gByte = 255.0f;
         }
 
-        auto diffB0 = (double)(unsigned __int8)pVerts[i].diff;
-        auto b3 = colourConverted * diffB0 * light_b + gfAmbient_E10838;
-        if (b3 > 255.0f)
+        auto diffBlue = (double)(unsigned __int8)pVerts[i].diff;
+        auto bByte = colourConverted * diffBlue * light_b + gfAmbient_E10838;
+        if (bByte > 255.0f)
         {
-            b3 = 255.0f;
+            bByte = 255.0f;
         }
    
-        pVerts[i].diff =  (signed int)b3 | pVerts[i].diff & 0xFF000000 | (((signed int)b2 | ((signed int)b1 << 8)) << 8);
+        pVerts[i].diff =  (signed int)bByte | pVerts[i].diff & 0xFF000000 | (((signed int)gByte | ((signed int)rByte << 8)) << 8);
     }
     
     
+   
 
     // TODO: Implement me
     //const auto ret = pLightVerts_2B52A80(vertCount, pVerts, alwaysZero, colourRelated);

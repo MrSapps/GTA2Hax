@@ -141,41 +141,13 @@ colourRelated	= dword	ptr  14h
 
                     .IF (ah & 65) ; float less than (check within radius of light)
 		                fstp	dword ptr [ebp+14h] ; pop float	into [ebp+14h]
-		                mov	esi, [ebp+14h]
-		                mov	eax, esi
-		                and	esi, 7FFFFFh
-		                and	eax, 7F800000h
-		                sar	eax, 1
 
-                        .IF eax & 400000h
-                            add	eax, 20000000h
-                        .ELSE
-		                    add	eax, 1F800000h
-		                    or	esi, 800000h
-                        .ENDIF
-
-		                mov	ebx, gPtr_dword_E13864
-                        mov ebx, [ebx]
-
-                        ; shift table index ?
-		                shr	esi, cl
-
-                       fld dword ptr [ebp+14h]
-                       FSQRT
-                       fstp	dword ptr [ebp+14h] 
+                        fld dword ptr [ebp+14h]
+                        FSQRT
+                        fstp	dword ptr [ebp+14h]
 
 		                fld	dword ptr [edx-10h] ; field_8_radius
-		                mov	esi, [ebx+esi*4] ; Load table entry
-
-                        ;and	eax, 7F800000h
-		                ;or	esi, eax ; or in float magic
-
-		                ;mov	[ebp+14h], esi; v17
-
-                       
-
 		                fsub	dword ptr [ebp+14h]
-
 		                fmul	dword ptr [edx-8] ; field_10_radius_normalized
 
 		                fcom	ds:flt_77D10C

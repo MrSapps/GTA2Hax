@@ -795,21 +795,29 @@ extern "C"
 
 int __stdcall LightVerts_new(int vertCount, Vert* pVerts, int alwaysZero, unsigned __int8 colourRelated)
 {
-    const auto kLightCount = (*numLights_2B93E38);
-    Vert* pVert = pVerts;
-    for (int vertIdx = vertCount; vertIdx; --vertIdx)
+    for (int vertIdx = 0; vertIdx < vertCount; vertIdx++)
     {
         float light_r = 0.0f;
         float light_g = 0.0f;
         float light_b = 0.0f;
-        for (int j = 0; j < kLightCount; j++)
+        for (int j = 0; j < (*numLights_2B93E38); j++)
         {
             if ((lights_2B959E0[j].field_0_flags & 0x30000) == 0x10000) // Light type ?
             {
                 // Check if vertex point is within light radius
-                const float dx = pVert[4].x - lights_2B959E0[j].field_14_x;
-                const float dy = pVert[4].y - lights_2B959E0[j].field_18_y;
-                const float dz = pVert[4].z - lights_2B959E0[j].field_1C_z;
+
+                // TODO: This has caused me no end of trouble, it appears no matter if quad or tri the 5th index
+                // is used to check the position, this means we always have:
+                // vert0
+                // vert1
+                // vert2
+                // vert3 - optional, if tri then nothing
+                // ?? 0-4 for lighting, perhaps actually normals ?
+
+                const float dx = pVerts[vertIdx + 4].x - lights_2B959E0[j].field_14_x;
+                const float dy = pVerts[vertIdx + 4].y - lights_2B959E0[j].field_18_y;
+                const float dz = pVerts[vertIdx + 4].z - lights_2B959E0[j].field_1C_z;
+
 
                 const float distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
 
@@ -828,31 +836,30 @@ int __stdcall LightVerts_new(int vertCount, Vert* pVerts, int alwaysZero, unsign
             }
         }
 
-        const float colourConverted = (float)colourRelated * 0.0039215689f;
+        const float colourConverted = colourRelated * 0.0039215689f;
 
-        const auto diffB2 = (double)(((unsigned int)pVert->diff >> 16) & 0xFF);
+        const auto diffB2 = (double)(((unsigned int)pVerts[vertIdx].diff >> 16) & 0xFF);
         auto b1 = colourConverted * diffB2 * light_r + gfAmbient_E10838;
         if (b1 > 255.0f)
         {
             b1 = 255.0f;
         }
 
-        const auto diffB1 = (double)((unsigned __int16)pVert->diff >> 8);
+        const auto diffB1 = (double)((unsigned __int16)pVerts[vertIdx].diff >> 8);
         auto b2 = colourConverted * diffB1 * light_g + gfAmbient_E10838;
         if (b2 > 255.0f)
         {
             b2 = 255.0f;
         }
 
-        auto diffB0 = (double)(unsigned __int8)pVert->diff;
+        auto diffB0 = (double)(unsigned __int8)pVerts[vertIdx].diff;
         auto b3 = colourConverted * diffB0 * light_b + gfAmbient_E10838;
         if (b3 > 255.0f)
         {
             b3 = 255.0f;
         }
 
-        ++pVert;
-        pVert[-1].diff = (signed int)b3 | pVert[-1].diff & 0xFF000000 | (((signed int)b2 | ((signed int)b1 << 8)) << 8);
+        pVerts[vertIdx].diff = (signed int)b3 | pVerts[vertIdx].diff & 0xFF000000 | (((signed int)b2 | ((signed int)b1 << 8)) << 8);
     }
 
     return 0;

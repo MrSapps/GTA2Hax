@@ -80,26 +80,28 @@ colourRelated	= dword	ptr  14h
 		push	ebp
 		mov	ebp, esp
 		sub	esp, 34h
-		mov	eax, [ebp+14h]
-		xor	ecx, ecx
-		and	eax, 0FFh
+
+		mov	eax, [ebp+colourRelated]
+		and	eax, 0FFh   ; limit to byte
 		mov	[ebp+colourRelated], eax
-		mov	eax, [ebp+vertCount]
+		
 		fild	[ebp+colourRelated]
 		fmul	ds:flt_77D114
 		fstp	[ebp+var_4]
+
 		mov	edx, [ebp+pVerts]
 		push	edi
 		push	esi
 		push	ebx
 		lea	edi, [edx+SVertex.diff]
+
+        mov	eax, [ebp+vertCount]
 		mov	[ebp+vertCounter], eax
 
         .WHILE [ebp+vertCounter] > 0
 		    fld	ds:flt_77D10C
 		    fld	ds:flt_77D10C
-		    mov	eax, numLights_2B93E38
-            mov eax, [eax]
+
 		    fst	[ebp+pVerts]
 		    fld	ds:flt_77D10C
 		    fst	[ebp+var_8]
@@ -110,6 +112,8 @@ colourRelated	= dword	ptr  14h
 		    mov	edx, lights_2B959E0
             add edx, 18h
 
+            mov	eax, numLights_2B93E38
+            mov eax, [eax]
 		    mov	[ebp+vertCount], eax
 
             .WHILE [ebp+vertCount] > 0

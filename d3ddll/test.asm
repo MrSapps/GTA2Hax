@@ -110,22 +110,22 @@ colourRelated	= dword	ptr  14h
             mov ecx, [ecx]
 
 		    mov	edx, lights_2B959E0
-            add edx, 18h
+            ;add edx, 18h
 
             mov	eax, numLights_2B93E38
             mov eax, [eax]
 		    mov	[ebp+vertCount], eax
 
             .WHILE [ebp+vertCount] > 0
-		        mov	eax, [edx-18h]
+		        mov	eax, [edx]
 		        and	eax, 30000h
                 .IF eax == 10000h
 		            fld	dword ptr [edi+70h]
-		            fsub	dword ptr [edx-4]
+		            fsub	dword ptr [edx+14h]
 		            fld	dword ptr [edi+74h]
-		            fsub	dword ptr [edx]
+		            fsub	dword ptr [edx+18h]
 		            fld	dword ptr [edi+78h]
-		            fsub	dword ptr [edx+4]
+		            fsub	dword ptr [edx+1Ch]
 		            fld	st(2)
 		            fmulp	st(3), st
 		            fld	st(1)
@@ -136,36 +136,34 @@ colourRelated	= dword	ptr  14h
 		            faddp	st(3), st
 		            fstp	st
 		            fstp	st
-		            fcom	dword ptr [edx-12] ; light radius squared
+		            fcom	dword ptr [edx+0Ch] ; light radius squared
 		            fnstsw	ax
 
                     .IF (ah & 65) ; float less than (check within radius of light)
-		                fstp	dword ptr [ebp+14h] ; pop float	into [ebp+14h]
-
-                        fld dword ptr [ebp+14h]
                         FSQRT
-                        fstp	dword ptr [ebp+14h]
+                        fstp	dword ptr [ebp+14h] ; pop float FSQRT result into ebp+14h
 
-		                fld	dword ptr [edx-10h] ; field_8_radius
+		                fld	dword ptr [edx+8h] ; field_8_radius
 		                fsub	dword ptr [ebp+14h]
-		                fmul	dword ptr [edx-8] ; field_10_radius_normalized
+		                fmul	dword ptr [edx+10h] ; field_10_radius_normalized
 
 		                fcom	ds:flt_77D10C
 		                fnstsw	ax
 
                         .IF !(ah & 65); if float > 0.0f
-		                    fmul	dword ptr [edx-14h]
-		                    fld	dword ptr [edx+8]
+		                    fmul	dword ptr [edx+4h]
+		                    fld	dword ptr [edx+20h]
 		                    fmul	st, st(1)
 		                    faddp	st(4), st
-		                    fld	dword ptr [edx+0Ch]
+		                    fld	dword ptr [edx+24h]
 		                    fmul	st, st(1) 
 		                    faddp	st(3), st
-		                    fld	dword ptr [edx+10h]
+		                    fld	dword ptr [edx+28h]
 		                    fmul	st, st(1)
 		                    faddp	st(2), st
                         .ENDIF
                     .ENDIF
+
 		            fstp	st
                 .ENDIF
 

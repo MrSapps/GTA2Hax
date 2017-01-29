@@ -136,10 +136,10 @@ colourRelated	= dword	ptr  14h
 		            faddp	st(3), st
 		            fstp	st
 		            fstp	st
-		            fcom	dword ptr [edx-12]
+		            fcom	dword ptr [edx-12] ; light radius squared
 		            fnstsw	ax
 
-                    .IF (ah & 65) ; float less than 
+                    .IF (ah & 65) ; float less than (check within radius of light)
 		                fstp	dword ptr [ebp+14h] ; pop float	into [ebp+14h]
 		                mov	esi, [ebp+14h]
 		                mov	eax, esi
@@ -156,14 +156,28 @@ colourRelated	= dword	ptr  14h
 
 		                mov	ebx, gPtr_dword_E13864
                         mov ebx, [ebx]
-		                and	eax, 7F800000h
+
+                        ; shift table index ?
 		                shr	esi, cl
-		                fld	dword ptr [edx-10h]
-		                mov	esi, [ebx+esi*4]
-		                or	esi, eax
-		                mov	[ebp+14h], esi
+
+                       fld dword ptr [ebp+14h]
+                       FSQRT
+                       fstp	dword ptr [ebp+14h] 
+
+		                fld	dword ptr [edx-10h] ; field_8_radius
+		                mov	esi, [ebx+esi*4] ; Load table entry
+
+                        ;and	eax, 7F800000h
+		                ;or	esi, eax ; or in float magic
+
+		                ;mov	[ebp+14h], esi; v17
+
+                       
+
 		                fsub	dword ptr [ebp+14h]
-		                fmul	dword ptr [edx-8]
+
+		                fmul	dword ptr [edx-8] ; field_10_radius_normalized
+
 		                fcom	ds:flt_77D10C
 		                fnstsw	ax
 
@@ -173,7 +187,7 @@ colourRelated	= dword	ptr  14h
 		                    fmul	st, st(1)
 		                    faddp	st(4), st
 		                    fld	dword ptr [edx+0Ch]
-		                    fmul	st, st(1)
+		                    fmul	st, st(1) 
 		                    faddp	st(3), st
 		                    fld	dword ptr [edx+10h]
 		                    fmul	st, st(1)

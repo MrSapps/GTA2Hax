@@ -52,8 +52,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -93,6 +92,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>del "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
@@ -112,6 +112,7 @@ copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>del "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
@@ -135,6 +136,7 @@ copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>del "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
@@ -158,6 +160,7 @@ copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>del "C:\Program Files (x86)\Rockstar Games\GTA2\d3ddll.dll"
@@ -197,11 +200,13 @@ copy "$(TargetPath)" "C:\Program Files (x86)\Rockstar Games\GTA2"
     <None Include="Exports.def" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Asm\Asm.vcxproj">
+      <Project>{4cd8316d-2271-4e88-b0f9-1742dbb4d867}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\Detours\Detours.vcxproj">
       <Project>{b119a7dc-bae5-4798-a83d-95f602272bee}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

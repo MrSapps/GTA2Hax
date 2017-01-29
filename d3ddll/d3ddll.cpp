@@ -134,8 +134,10 @@ static DWORD dword_2B93E28 = 0;
 
 
 
-
-static float gfAmbient_E10838 = 1.0f;
+extern "C"
+{
+    float gfAmbient_E10838 = 1.0f;
+}
 
 struct SImageTableEntry
 {
@@ -227,9 +229,35 @@ STexture* __stdcall TextureCache_E01EC0(STexture* pTexture)
     return pTexture;
 }
 
-int __stdcall LightVerts_2B52A80(int count, Vert *pVerts, int alwaysZero, unsigned __int8 colourRelated);
-decltype(&LightVerts_2B52A80) pLightVerts_2B52A80 = 0x0;
 
+struct SLightInternal
+{
+    DWORD field_0_flags;
+    float field_4_brightness;
+    float field_8_radius;
+    float field_C_radius_squared;
+    float field_10_radius_normalized; // A byte of SLight field_10
+
+                                      // x from SLight?
+    float field_14_x;
+
+    // y from SLight?
+    float field_18_y; // Light verts takes pointer to here
+
+                      // z from SLight?
+    float field_1C_z;
+
+    // SLight field_10 bytes
+    float field_20_r;
+    float field_24_g;
+    float field_28_b;
+};
+static_assert(sizeof(SLightInternal) == 0x2c, "Wrong size SLightInternal");
+
+extern "C"
+{
+    SLightInternal* lights_2B959E0 = (SLightInternal*)0x459E0;
+}
 
 void CC ConvertColourBank(s32 unknown)
 {
@@ -740,6 +768,29 @@ static unsigned __int16 __stdcall CacheFlushBatchRelated_2B52810(STexture *pText
 
 }
 
+
+extern "C"
+{
+    float* gPtr_dword_E13864 = 0x0;
+    DWORD* dword_13868 = 0x0;
+}
+
+union FloatBits
+{
+    float value;
+    unsigned int bits;
+};
+
+
+
+extern "C"
+{
+    DWORD* numLights_2B93E38 = 0; // 43E38
+    float flt_77D100 = 255.0f;
+    float flt_77D10C = 0.0f;
+    float flt_77D114 = 0.0039215689f;
+}
+
 static signed int __stdcall D3dTextureSetCurrent_2B56110(SHardwareTexture *pHardwareTexture);
 
 void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int diffuseColour)
@@ -884,7 +935,7 @@ void CC gbh_DrawTriangle(int triFlags, STexture* pTexture, Vert* pVerts, int dif
 
     if (BYTE1(triFlags) & 0x80 && gfAmbient_E10838 != 255.0)
     {
-        LightVerts_2B52A80(3, pVerts, 0, diffuseColour);
+//        LightVerts_2B52A80(3, pVerts, 0, diffuseColour);
     }
 
     if (SUCCEEDED((*gD3dPtr_dword_21C85E0)->field_28_ID3D_Device->DrawPrimitive(
@@ -1113,7 +1164,7 @@ void CC gbh_DrawQuad(int quadFlags, STexture* pTexture, Vert* pVerts, int baseCo
     {
         if (gfAmbient_E10838 != 255.0f)
         {
-            LightVerts_2B52A80(4, pVerts, 0, baseColour);
+//            LightVerts_2B52A80(4, pVerts, 0, baseColour);
         }
     }
 
@@ -2723,6 +2774,12 @@ decltype(&TextureCache_E01EC0) pTextureCache_E01EC0 = 0x0;
 decltype(&D3dTextureSetCurrent_2B56110) pD3dTextureSetCurrent_2B56110 = 0x0;
 
 
+extern "C"
+{
+    void LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, unsigned __int8 colourRelated);
+}
+decltype(&LightVerts_2B52A80) pLightVerts_2B52A80 = 0;
+
 static void InstallHooks()
 {
    // DetourAttach((PVOID*)(&pConvertPixelFormat_2B55A10), (PVOID)ConvertPixelFormat_2B55A10);
@@ -2748,33 +2805,8 @@ static void InstallHooks()
 
 }
 
-struct SLightInternal
-{
-    DWORD field_0_flags;
-    float field_4_brightness;
-    float field_8_radius;
-    float field_C_radius_squared;
-    float field_10_radius_normalized; // A byte of SLight field_10
-
-    // x from SLight?
-    float field_14_x;
-
-    // y from SLight?
-    float field_18_y; // Light verts takes pointer to here
-
-    // z from SLight?
-    float field_1C_z;
-
-    // SLight field_10 bytes
-    float field_20_r;
-    float field_24_g;
-    float field_28_b;
-};
-static_assert(sizeof(SLightInternal) == 0x2c, "Wrong size SLightInternal");
 
 //SLightInternal lights_2B959E0[256]; // 459E0
-SLightInternal* lights_2B959E0 = (SLightInternal*)0x459E0;
-static DWORD* numLights_2B93E38 = 0; // 43E38
 
 void CC gbh_ResetLights()
 {
@@ -2815,115 +2847,6 @@ int CC gbh_AddLight(SLight* pLight)
 
     (*numLights_2B93E38)++;
     return idx * sizeof(SLightInternal);
-}
-
-float* gPtr_dword_E13864 = 0x0;
-DWORD* dword_13868 = 0x0;
-
-union FloatBits
-{
-    float value;
-    unsigned int bits;
-};
-
-int __stdcall LightVerts_2B52A80(int vertCount, Vert* pVerts, int alwaysZero, unsigned __int8 colourRelated)
-{
-    //lights_2B959E0[0] = lights_2B959E0[15];
-    //*numLights_2B93E38 = 1;
-
-    const auto kLightCount = (*numLights_2B93E38);
-//    for (int i = vertCount; i>=0; i--)
-    for (int i = 0; i<vertCount; i++)
-    {
-
-        float light_r = 0.0f;
-        float light_g = 0.0f;
-        float light_b = 0.0f;
-
-        for (int j = 0; j < kLightCount; j++)
-        {
-            const SLightInternal& rLight = lights_2B959E0[j];
-
-            if ((rLight.field_0_flags & 0x30000) == 0x10000) // Light type ?
-            {
-                // Check if vertex point is within light radius
-                const float dx = pVerts[i + 1].x - lights_2B959E0[j].field_14_x;
-                const float dy = pVerts[i + 1].y - lights_2B959E0[j].field_18_y;
-                const float dz = pVerts[i + 1].z - lights_2B959E0[j].field_1C_z;
-
-                const float distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
-
-                if (distanceSquared <= rLight.field_C_radius_squared)
-                {
-                    /*
-                    FloatBits t;
-                    t.value = distanceSquared;
-                    t.bits &= 0x7FFFFF;
-
-                    auto tblIdx = (unsigned int)distanceSquared & 0x7FFFFF;
-                    auto v15 = ((unsigned int)distanceSquared & 0x7F800000) >> 1;
-                    DWORD v16 = 0;
-                    if (v15 & 0x400000)
-                    {
-                        v16 = v15 + 0x20000000;
-                    }
-                    else
-                    {
-                        v16 = v15 + 0x1F800000;
-                        tblIdx |= 0x800000u;
-                    }
-
-                    const auto v17 = lights_2B959E0[j].field_8_radius 
-                        - (float)(v16 & 0x7F800000 | (unsigned int)gPtr_dword_E13864[tblIdx >> (*dword_13868)]) 
-                        * lights_2B959E0[j].field_10_radius_normalized;
-*/
-
-                    float v17 = lights_2B959E0[j].field_8_radius  - sqrt(distanceSquared) * lights_2B959E0[j].field_10_radius_normalized;// sqrt(distanceSquared) / 1.0f;
-
-                    if (v17 > 0.0f)
-                    {
-                        auto lightWithBrightness = v17 * rLight.field_4_brightness;
-                        light_r += rLight.field_20_r * lightWithBrightness;
-                        light_g += rLight.field_24_g * lightWithBrightness;
-                        light_b += rLight.field_28_b * lightWithBrightness;
-                    }
-                }
-            }
-        }
-
-        const float colourConverted = (float)colourRelated * 0.0039215689f;
-
-        const auto diffRed = (double)(((unsigned int)pVerts[i].diff >> 16) & 0xFF);
-        auto rByte = colourConverted * diffRed * light_r + gfAmbient_E10838;
-        if (rByte > 255.0f)
-        {
-            rByte = 255.0f;
-        }
-
-        const auto diffGreen = (double)((unsigned __int16)pVerts[i].diff >> 8);
-        auto gByte = colourConverted * diffGreen * light_g + gfAmbient_E10838;
-        if (gByte > 255.0f)
-        {
-            gByte = 255.0f;
-        }
-
-        auto diffBlue = (double)(unsigned __int8)pVerts[i].diff;
-        auto bByte = colourConverted * diffBlue * light_b + gfAmbient_E10838;
-        if (bByte > 255.0f)
-        {
-            bByte = 255.0f;
-        }
-   
-        pVerts[i].diff =  (signed int)bByte | pVerts[i].diff & 0xFF000000 | (((signed int)gByte | ((signed int)rByte << 8)) << 8);
-    }
-    
-    
-   
-
-    // TODO: Implement me
-    //const auto ret = pLightVerts_2B52A80(vertCount, pVerts, alwaysZero, colourRelated);
-    //return ret;
-    return 0;
 }
 
 static void RebasePtrs(DWORD baseAddr)

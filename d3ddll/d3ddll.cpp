@@ -259,6 +259,7 @@ extern "C"
     SLightInternal* lights_2B959E0 = (SLightInternal*)0x459E0;
 }
 
+
 void CC ConvertColourBank(s32 unknown)
 {
     // Empty/NOP in real game
@@ -789,6 +790,72 @@ extern "C"
     float flt_77D100 = 255.0f;
     float flt_77D10C = 0.0f;
     float flt_77D114 = 0.0039215689f;
+}
+
+
+int __stdcall LightVerts_new(int vertCount, Vert* pVerts, int alwaysZero, unsigned __int8 colourRelated)
+{
+    const auto kLightCount = (*numLights_2B93E38);
+    Vert* pVert = pVerts;
+    for (int vertIdx = vertCount; vertIdx; --vertIdx)
+    {
+        float light_r = 0.0f;
+        float light_g = 0.0f;
+        float light_b = 0.0f;
+        for (int j = 0; j < kLightCount; j++)
+        {
+            if ((lights_2B959E0[j].field_0_flags & 0x30000) == 0x10000) // Light type ?
+            {
+                // Check if vertex point is within light radius
+                const float dx = pVert[4].x - lights_2B959E0[j].field_14_x;
+                const float dy = pVert[4].y - lights_2B959E0[j].field_18_y;
+                const float dz = pVert[4].z - lights_2B959E0[j].field_1C_z;
+
+                const float distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
+
+                if (distanceSquared <= lights_2B959E0[j].field_C_radius_squared)
+                {
+                    const float distance = sqrt(distanceSquared);
+                    const float normalizedDistance = (lights_2B959E0[j].field_8_radius - distance) * lights_2B959E0[j].field_10_radius_normalized;
+                    if (normalizedDistance > 0.0f)
+                    {
+                        auto lightWithBrightness = normalizedDistance * lights_2B959E0[j].field_4_brightness;
+                        light_r = light_r + lights_2B959E0[j].field_20_r * lightWithBrightness;
+                        light_g = light_g + lights_2B959E0[j].field_24_g * lightWithBrightness;
+                        light_b = light_b + lights_2B959E0[j].field_28_b * lightWithBrightness;
+                    }
+                }
+            }
+        }
+
+        const float colourConverted = (float)colourRelated * 0.0039215689f;
+
+        const auto diffB2 = (double)(((unsigned int)pVert->diff >> 16) & 0xFF);
+        auto b1 = colourConverted * diffB2 * light_r + gfAmbient_E10838;
+        if (b1 > 255.0f)
+        {
+            b1 = 255.0f;
+        }
+
+        const auto diffB1 = (double)((unsigned __int16)pVert->diff >> 8);
+        auto b2 = colourConverted * diffB1 * light_g + gfAmbient_E10838;
+        if (b2 > 255.0f)
+        {
+            b2 = 255.0f;
+        }
+
+        auto diffB0 = (double)(unsigned __int8)pVert->diff;
+        auto b3 = colourConverted * diffB0 * light_b + gfAmbient_E10838;
+        if (b3 > 255.0f)
+        {
+            b3 = 255.0f;
+        }
+
+        ++pVert;
+        pVert[-1].diff = (signed int)b3 | pVert[-1].diff & 0xFF000000 | (((signed int)b2 | ((signed int)b1 << 8)) << 8);
+    }
+
+    return 0;
 }
 
 static signed int __stdcall D3dTextureSetCurrent_2B56110(SHardwareTexture *pHardwareTexture);
@@ -2787,7 +2854,7 @@ static void InstallHooks()
    // DetourAttach((PVOID*)(&pFindTextureFormat_2B55C60), (PVOID)FindTextureFormat_2B55C60);
 
     
-    DetourAttach((PVOID*)(&pLightVerts_2B52A80), (PVOID)LightVerts_2B52A80);
+    DetourAttach((PVOID*)(&pLightVerts_2B52A80), (PVOID)LightVerts_new);
    
     //DetourAttach((PVOID*)(&pCreateD3DDevice_E01840), (PVOID)CreateD3DDevice_E01840);
     /*

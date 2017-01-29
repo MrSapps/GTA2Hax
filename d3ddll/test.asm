@@ -93,7 +93,7 @@ colourRelated	= dword	ptr  14h
 		push	edi
 		push	esi
 		push	ebx
-		lea	edi, [edx+SVertex.diff]
+		lea	edi, [edx]
 
         mov	eax, [ebp+vertCount]
 		mov	[ebp+vertCounter], eax
@@ -120,11 +120,11 @@ colourRelated	= dword	ptr  14h
 		        mov	eax, [edx]
 		        and	eax, 30000h
                 .IF eax == 10000h
-		            fld	dword ptr [edi+70h]
+		            fld	dword ptr [edi+80h]
 		            fsub	dword ptr [edx+14h]
-		            fld	dword ptr [edi+74h]
+		            fld	dword ptr [edi+84h]
 		            fsub	dword ptr [edx+18h]
-		            fld	dword ptr [edi+78h]
+		            fld	dword ptr [edi+88h]
 		            fsub	dword ptr [edx+1Ch]
 		            fld	st(2)
 		            fmulp	st(3), st
@@ -167,17 +167,18 @@ colourRelated	= dword	ptr  14h
 		            fstp	st
                 .ENDIF
 
+  		        add	edx, 2Ch ; to next light
 		        mov	eax, [ebp+vertCount]
-		        add	edx, 2Ch
 		        dec	eax
 		        mov	[ebp+vertCount], eax
             .ENDW
 
 		    fstp	[ebp+var_8]
-		    xor	ecx, ecx
 		    fstp	[ebp+pVerts]
 
-		    mov	eax, [edi]
+		    mov	eax, [edi+10h]
+
+            xor	ecx, ecx
 		    mov	dword ptr [ebp+var_24+4], ecx
 		    mov	edx, eax
 		    mov	dword ptr [ebp+var_2C+4], ecx
@@ -243,12 +244,12 @@ colourRelated	= dword	ptr  14h
 		    add	edi, 20h
 		    shl	eax, 8
 		    or	eax, edx
-		    mov	edx, [edi-20h]
+		    mov	edx, [edi-10h]
 		    shl	eax, 8
 		    and	edx, 0FF000000h
 		    or	eax, edx
 		    or	eax, esi
-		    mov	[edi-20h], eax
+		    mov	[edi-10h], eax
 		    mov	eax, [ebp+vertCounter]
 		    dec	eax
 		    mov	[ebp+vertCounter], eax
